@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+*.db
+*.db-journal
+data/
+.env
+
+# Node
+node_modules/
+frontend/dist/
+npm-debug.log*
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
