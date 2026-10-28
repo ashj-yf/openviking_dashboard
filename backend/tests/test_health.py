@@ -1,5 +1,4 @@
 import httpx
-import pytest
 
 from app.services import health_service
 
@@ -9,6 +8,13 @@ async def test_health_all_green(db, ov_mock):
     result = await health_service.get_health(db)
     assert result.db is True and result.openviking is True
     assert result.version == "v0.4.13"
+
+
+async def test_health_non_string_version_reported_none(db, ov_mock):
+    ov_mock["handler"] = lambda req: httpx.Response(200, json={"status": "ok", "version": 123})
+    result = await health_service.get_health(db)
+    assert result.db is True and result.openviking is True
+    assert result.version is None
 
 
 async def test_health_ov_down_still_db_ok(db, ov_mock):

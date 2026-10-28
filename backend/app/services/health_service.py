@@ -22,7 +22,8 @@ async def get_health(db: AsyncSession) -> HealthResponse:
         client = root_client()
         payload = await OVSystemAPI(client).health()
         if isinstance(payload, dict):
-            version = payload.get("version")
+            v = payload.get("version")
+            version = v if isinstance(v, str) else None
         ov_ok = True
     except Exception:
         # root key 未配置、HTTP 4xx/5xx、传输错误等任何异常都只做降级，不外抛。

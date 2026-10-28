@@ -26,6 +26,13 @@ def test_missing_first_admin_fails():
     assert "FIRST_ADMIN" in str(exc.value)
 
 
+def test_whitespace_first_admin_fails():
+    for field in ("first_admin_username", "first_admin_password"):
+        with pytest.raises(ConfigError) as exc:
+            validate_settings(_base_settings(**{field: "   "}))
+        assert "FIRST_ADMIN" in str(exc.value)
+
+
 def test_empty_secrets_always_fail():
     with pytest.raises(ConfigError):
         validate_settings(_base_settings(jwt_secret=""))

@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     # Fernet 密钥加密主密钥（留存 user key 用），与 JWT_SECRET 独立设置
     secret_key: str = Field(default="change-me")
 
-    first_admin_username: str = "admin"
-    first_admin_password: str = "admin123"
+    first_admin_username: str = ""
+    first_admin_password: str = ""
 
     openviking_base_url: str = "https://ov.19951112.xyz"
     openviking_root_key: str = ""
@@ -44,7 +44,7 @@ def validate_settings(s: Settings) -> None:
     """发现问题时抛 ConfigError，消息逐条列出；DEBUG 下放宽 root key 与示例密钥检查。"""
     problems: list[str] = []
 
-    if not s.first_admin_username or not s.first_admin_password:
+    if not s.first_admin_username.strip() or not s.first_admin_password.strip():
         problems.append("- FIRST_ADMIN_USERNAME / FIRST_ADMIN_PASSWORD 不能为空")
     if not s.jwt_secret:
         problems.append("- JWT_SECRET 不能为空")
