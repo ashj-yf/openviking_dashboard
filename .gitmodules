@@ -1,0 +1,3 @@
+[submodule "docs"]
+	path = docs
+	url = https://github.com/ashj-yf/openviking_dashboard_docs.git
