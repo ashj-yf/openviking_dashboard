@@ -1,8 +1,8 @@
-"""租户 admin key 的对称加密存储。
+"""user key 留存加密。
 
-root key 只存在于服务端 .env；每个 account 的 admin key 需要加密后落库，
-供数据面代理使用。Fernet key 由 JWT_SECRET 确定性派生（生产环境请确保
-JWT_SECRET 已更换为随机长串，轮换密钥需另行迁移密文）。
+看板留存的 OpenViking 用户密钥对称加密后落库，供数据面代理使用。
+Fernet 主密钥由 SECRET_KEY 经 SHA-256 确定性派生（生产环境请确保
+SECRET_KEY 已更换为随机长串，轮换密钥需另行迁移密文）。
 """
 import base64
 import hashlib
@@ -17,7 +17,7 @@ _fernet: Fernet | None = None
 def _get_fernet() -> Fernet:
     global _fernet
     if _fernet is None:
-        digest = hashlib.sha256(get_settings().jwt_secret.encode()).digest()
+        digest = hashlib.sha256(get_settings().secret_key.encode()).digest()
         _fernet = Fernet(base64.urlsafe_b64encode(digest))
     return _fernet
 
