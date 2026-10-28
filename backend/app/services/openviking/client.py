@@ -6,16 +6,36 @@
   请求按账户自动隔离，非 ROOT 密钥不能跨账户检索。
 - ROOT 密钥只能访问 /admin/* 与 /console/*，访问数据面返回 403。
 """
+import logging
+import time
 from typing import Any
 
 import httpx
 
 from app.core.config import get_settings
 
+logger = logging.getLogger("app.openviking")
+
+# 测试注入缝：None 表示走真实网络；测试通过 set_test_transport 注入 MockTransport。
+_test_transport: httpx.AsyncBaseTransport | None = None
+
+
+def set_test_transport(transport: httpx.AsyncBaseTransport | None) -> None:
+    """注入测试用 httpx transport（如 ``httpx.MockTransport``）。"""
+    global _test_transport
+    _test_transport = transport
+
+
+def reset_test_transport() -> None:
+    """清除测试注入的 transport，恢复真实网络。"""
+    global _test_transport
+    _test_transport = None
+
 
 class OpenVikingError(RuntimeError):
     def __init__(self, status_code: int, message: str, path: str = ""):
         self.status_code = status_code
+        self.message = message
         self.path = path
         super().__init__(f"OpenViking {status_code} {path}: {message}")
 
@@ -61,10 +81,20 @@ class OVClient:
         params: dict[str, Any] | None = None,
     ) -> Any:
         url = f"{self.base_url}{path}"
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        start = time.monotonic()
+        async with httpx.AsyncClient(timeout=self.timeout, transport=_test_transport) as client:
             resp = await client.request(
                 method, url, json=json, params=params, headers=self._headers()
             )
+        elapsed_ms = (time.monotonic() - start) * 1000
+        # 只记录方法/路径/状态码/耗时；禁止记录 headers、body、params 与 api_key。
+        logger.info(
+            "ov_request method=%s path=%s status=%s elapsed_ms=%.1f",
+            method,
+            path,
+            resp.status_code,
+            elapsed_ms,
+        )
         if resp.status_code >= 400:
             raise OpenVikingError(resp.status_code, resp.text[:500], path)
         if not resp.content:
