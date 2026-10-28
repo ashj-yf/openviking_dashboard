@@ -1,11 +1,16 @@
-"""FastAPI 依赖：数据库会话与 root key OV 客户端。"""
+"""FastAPI 依赖：数据库会话、root key OV 客户端、JWT 鉴权与三角色 RBAC。"""
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+import jwt
+from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
+from app.core.security import decode_access_token
+from app.models import DashboardUser
 from app.services.openviking.client import OVClient, OpenVikingError, root_client
 from app.services.openviking.system import OVSystemAPI
 
@@ -29,3 +34,77 @@ def ov_system_api(client: RootOVClient) -> OVSystemAPI:
 
 
 OVSystemDep = Annotated[OVSystemAPI, Depends(ov_system_api)]
+
+
+# ---------------------------------------------------------------------------
+# JWT 鉴权与初始密码门禁
+# ---------------------------------------------------------------------------
+
+_bearer_scheme = HTTPBearer(auto_error=False)
+_AUTH_PATH_PREFIX = "/api/v1/auth/"
+
+
+def assert_password_current(user: DashboardUser, path: str) -> None:
+    """必须先改初始密码；认证自助接口（/api/v1/auth/）放行。"""
+    if user.must_change_password and not path.startswith(_AUTH_PATH_PREFIX):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "必须先修改初始密码"
+        )
+
+
+async def get_current_user(
+    request: Request,
+    db: DBSession,
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)
+    ] = None,
+) -> DashboardUser:
+    if credentials is None:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "未提供认证令牌",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    try:
+        payload = decode_access_token(credentials.credentials)
+        user_id = int(payload["sub"])
+    except (jwt.PyJWTError, KeyError, TypeError, ValueError):
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "认证令牌无效或已过期",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user = (
+        await db.scalars(
+            select(DashboardUser).where(DashboardUser.id == user_id)
+        )
+    ).first()
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "账号不存在或已禁用"
+        )
+
+    assert_password_current(user, request.url.path)
+    return user
+
+
+CurrentUser = Annotated[DashboardUser, Depends(get_current_user)]
+
+
+def require_roles(*roles: str):
+    """角色门禁工厂：角色不符返回 403（经 CurrentUser 链同时执行初始密码门禁）。"""
+    allowed = set(roles)
+
+    async def _checker(user: CurrentUser) -> DashboardUser:
+        if user.role not in allowed:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                f"权限不足，需要角色: {', '.join(roles)}",
+            )
+        return user
+
+    return _checker
+
+
+AdminUser = Annotated[DashboardUser, Depends(require_roles("admin"))]
