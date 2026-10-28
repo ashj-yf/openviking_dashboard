@@ -35,13 +35,3 @@ class DashboardUser(Base, TimestampMixin):
     )
 
     tenant: Mapped[Tenant | None] = relationship(lazy="selectin")
-
-    @property
-    def account_id(self) -> str | None:
-        """OpenViking 侧 account_id，来自绑定租户。"""
-        return self.tenant.ov_account_id if self.tenant is not None else None
-
-    @property
-    def has_ov_key(self) -> bool:
-        """仅暴露 OV user key 是否留存，绝不返回密文本身。"""
-        return bool(self.ov_user_key_encrypted)

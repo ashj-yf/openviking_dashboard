@@ -1,0 +1,39 @@
+"""健康探活：数据库与 OpenViking 双探针独立执行，任一失败降级为 degraded。"""
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.schemas.health import HealthResponse
+from app.services.openviking.client import OVClient, root_client
+from app.services.openviking.system import OVSystemAPI
+
+
+async def get_health(db: AsyncSession) -> HealthResponse:
+    db_ok = False
+    try:
+        await db.execute(text("SELECT 1"))
+        db_ok = True
+    except Exception:
+        db_ok = False
+
+    ov_ok = False
+    version: str | None = None
+    client: OVClient | None = None
+    try:
+        client = root_client()
+        payload = await OVSystemAPI(client).health()
+        if isinstance(payload, dict):
+            version = payload.get("version")
+        ov_ok = True
+    except Exception:
+        # root key 未配置、HTTP 4xx/5xx、传输错误等任何异常都只做降级，不外抛。
+        ov_ok = False
+    finally:
+        if client is not None:
+            await client.aclose()
+
+    return HealthResponse(
+        status="ok" if db_ok and ov_ok else "degraded",
+        db=db_ok,
+        openviking=ov_ok,
+        version=version,
+    )
