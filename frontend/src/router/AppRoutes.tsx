@@ -1,0 +1,102 @@
+import { useEffect } from "react";
+import { Spin } from "antd";
+import { useQueryClient } from "@tanstack/react-query";
+import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { authExpired } from "@/api/client";
+import type { Me } from "@/api/auth";
+import { qk } from "@/api/query-keys";
+import { useAuth } from "@/auth/auth-context";
+import { homePathFor } from "@/auth/permissions";
+import { AppLayout } from "@/layouts/AppLayout";
+import { ChangePasswordPage } from "@/pages/ChangePasswordPage";
+import { NotFoundPage } from "@/pages/errors/NotFoundPage";
+import { LoginPage } from "@/pages/LoginPage";
+import { getToken } from "@/auth/token-store";
+
+/** 监听 401 事件，统一跳登录（Api client 已在此前清除 token）。 */
+function AuthBoundary() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const onExpired = () =>
+      navigate("/login", { replace: true, state: { expired: true } });
+    authExpired.addEventListener("expired", onExpired);
+    return () => authExpired.removeEventListener("expired", onExpired);
+  }, [navigate]);
+  return null;
+}
+
+function FullScreenSpin() {
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Spin size="large" />
+    </div>
+  );
+}
+
+function RequireAuth() {
+  const { me, isLoading } = useAuth();
+  const location = useLocation();
+  if (getToken() === null) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+  // 引导查询已结束却没有 me（如 /me 失败且未触发 401 事件），回登录页；
+  // 引导未决不在此拦截——/change-password 必须立即可达，应用区由 BootstrapGate 等待。
+  if (!me && !isLoading) return <Navigate to="/login" replace />;
+  return <Outlet />;
+}
+
+/** 应用区（含 HomeRedirect）等待 /me 落地，避免按默认角色误跳再纠正。 */
+function BootstrapGate() {
+  const { me, isLoading } = useAuth();
+  if (getToken() !== null && !me && isLoading) return <FullScreenSpin />;
+  return <Outlet />;
+}
+
+function ForceChangeGate() {
+  const { me } = useAuth();
+  const queryClient = useQueryClient();
+  const location = useLocation();
+  // 改密成功后在同一事件循环内 navigate：AuthProvider 位于 Router 外层，context
+  // 刷新可能晚于本次路由渲染，故门禁位直接读实时缓存，避免被滞后的 me 弹回改密页。
+  const mustChange =
+    queryClient.getQueryData<Me>(qk.me)?.must_change_password ?? me?.must_change_password;
+  if (mustChange && location.pathname !== "/change-password") {
+    return <Navigate to="/change-password" replace />;
+  }
+  return <Outlet />;
+}
+
+function HomeRedirect() {
+  const { me } = useAuth();
+  return <Navigate to={homePathFor(me?.role)} replace />;
+}
+
+function PlaceholderPage({ title }: { title: string }) {
+  return <div data-testid="landing-placeholder">{title}页（待实现）</div>;
+}
+
+export function AppRoutes() {
+  return (
+    <>
+      <AuthBoundary />
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route element={<RequireAuth />}>
+          <Route path="/change-password" element={<ChangePasswordPage />} />
+          <Route element={<BootstrapGate />}>
+            <Route element={<ForceChangeGate />}>
+              <Route element={<AppLayout />}>
+                <Route index element={<HomeRedirect />} />
+                {/* 落地占位：T4/T6/T8 分别替换为带 RequireRole 的真实页面 */}
+                <Route path="/tenants" element={<PlaceholderPage title="团队管理" />} />
+                <Route path="/users" element={<PlaceholderPage title="用户管理" />} />
+                <Route path="/credentials" element={<PlaceholderPage title="我的凭证" />} />
+                <Route path="*" element={<NotFoundPage />} />
+              </Route>
+            </Route>
+          </Route>
+        </Route>
+      </Routes>
+    </>
+  );
+}

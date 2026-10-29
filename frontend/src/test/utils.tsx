@@ -5,6 +5,7 @@ import zhCN from "antd/locale/zh_CN";
 import type { ReactElement, ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AuthProvider } from "@/auth/auth-context";
 
 export function makeQueryClient(): QueryClient {
   return new QueryClient({
@@ -24,12 +25,14 @@ export function renderWithProviders(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <AntdRegistry>
-        <ConfigProvider locale={zhCN}>
+        <ConfigProvider locale={zhCN} button={{ autoInsertSpace: false }}>
           <AntApp>
             <QueryClientProvider client={queryClient}>
-              <MemoryRouter initialEntries={[options.route ?? "/"]}>
-                {children}
-              </MemoryRouter>
+              <AuthProvider>
+                <MemoryRouter initialEntries={[options.route ?? "/"]}>
+                  {children}
+                </MemoryRouter>
+              </AuthProvider>
             </QueryClientProvider>
           </AntApp>
         </ConfigProvider>

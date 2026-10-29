@@ -18,7 +18,7 @@ async function bootstrap(): Promise<void> {
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
       <AntdRegistry>
-        <ConfigProvider locale={zhCN}>
+        <ConfigProvider locale={zhCN} button={{ autoInsertSpace: false }}>
           <AntApp>
             <QueryClientProvider client={queryClient}>
               <App />
