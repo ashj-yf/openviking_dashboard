@@ -237,7 +237,7 @@
       },
       "TenantSyncReport": {
         "type": "object",
-        "required": ["account_id", "ov_user_count", "local_user_count", "matched", "missing_local", "extra_local", "synced_at"],
+        "required": ["account_id", "ov_user_count", "local_user_count", "matched", "synced_at"],
         "properties": {
           "account_id": { "type": "string" },
           "ov_user_count": { "type": "integer" },
@@ -260,7 +260,7 @@
         }
       },
       "UserOut": {
-        "type": "object", "required": ["id", "username", "role", "is_active", "has_key", "key_state"],
+        "type": "object", "required": ["id", "username", "role", "is_active"],
         "properties": {
           "id": { "type": "integer" },
           "username": { "type": "string" },
@@ -306,7 +306,7 @@
         }
       },
       "CredentialView": {
-        "type": "object", "required": ["endpoint", "account_id", "ov_user_id", "has_key", "seed_used"],
+        "type": "object", "required": ["endpoint", "account_id", "ov_user_id", "has_key"],
         "properties": {
           "endpoint": { "type": "string" },
           "account_id": { "type": "string" },

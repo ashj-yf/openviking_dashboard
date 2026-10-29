@@ -935,8 +935,8 @@ export interface components {
             ov_user_count: number;
             local_user_count: number;
             matched: number;
-            missing_local: components["schemas"]["SyncUserInfo"][];
-            extra_local: components["schemas"]["SyncUserInfo"][];
+            missing_local?: components["schemas"]["SyncUserInfo"][];
+            extra_local?: components["schemas"]["SyncUserInfo"][];
             /** Format: date-time */
             synced_at: string;
         };
@@ -962,9 +962,9 @@ export interface components {
             account_id?: string | null;
             ov_user_id?: string | null;
             ov_role?: string | null;
-            has_key: boolean;
+            has_key?: boolean;
             /** @enum {string} */
-            key_state: "current" | "pending";
+            key_state?: "current" | "pending";
             /** Format: date-time */
             key_synced_at?: string | null;
             must_change_password?: boolean;
@@ -1001,7 +1001,7 @@ export interface components {
             has_key: boolean;
             key_masked?: string | null;
             key_hint?: string | null;
-            seed_used: boolean;
+            seed_used?: boolean;
             /** Format: date-time */
             key_synced_at?: string | null;
         };
