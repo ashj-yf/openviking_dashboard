@@ -1,4 +1,5 @@
 """pytest 全局夹具。环境变量必须在任何 app.* 模块导入前设置。"""
+import json
 import os
 import pathlib
 import secrets
@@ -39,6 +40,8 @@ from app.services.openviking.client import reset_test_transport, set_test_transp
 @pytest_asyncio.fixture
 async def engine(tmp_path):
     eng = create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'test.db'}")
+    from app.core.db import attach_sqlite_pragma
+    attach_sqlite_pragma(eng)
     async with eng.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield eng
@@ -83,15 +86,16 @@ async def client(app, ov_mock):
 
 @pytest_asyncio.fixture
 async def make_user(db):
-    async def _factory(username: str, password: str, role: str, **kwargs):
-        tenant_id = None
-        tenant_spec = kwargs.pop("tenant", None)
-        if tenant_spec:
-            tenant = Tenant(**tenant_spec)
-            db.add(tenant)
-            await db.flush()
-            tenant_id = tenant.id
-        ov_key = kwargs.pop("ov_key", None)
+    async def _factory(username: str, password: str, role: str, *,
+                       tenant=None, tenant_id=None, ov_key=None, **kwargs):
+        if tenant is not None:
+            if isinstance(tenant, Tenant):
+                tenant_id = tenant.id
+            else:
+                t = Tenant(**tenant)
+                db.add(t)
+                await db.flush()
+                tenant_id = t.id
         user = DashboardUser(
             username=username,
             password_hash=hash_password(password),
@@ -105,3 +109,55 @@ async def make_user(db):
         await db.refresh(user)
         return user
     return _factory
+
+
+@pytest_asyncio.fixture
+async def make_tenant(db):
+    async def _factory(ov_account_id: str, **kwargs):
+        tenant = Tenant(
+            ov_account_id=ov_account_id,
+            admin_user_id=kwargs.pop("admin_user_id", "boss"),
+            **kwargs,
+        )
+        db.add(tenant)
+        await db.commit()
+        await db.refresh(tenant)
+        return tenant
+    return _factory
+
+
+@pytest.fixture
+def ov_calls(ov_mock):
+    """记录全部 OV 请求；responses 队列可预置 (status, json) 或 httpx.Response。"""
+    calls: list[dict] = []
+    responses: list = []
+
+    def _handler(req):
+        try:
+            body = json.loads(req.content) if req.content else None
+        except Exception:
+            body = None
+        calls.append({
+            "method": req.method,
+            "path": req.url.path,
+            "body": body,
+            "authorization": req.headers.get("authorization", ""),
+        })
+        if responses:
+            item = responses.pop(0)
+            return item if isinstance(item, httpx.Response) else httpx.Response(item[0], json=item[1])
+        return httpx.Response(200, json={})
+
+    ov_mock["handler"] = _handler
+    return {"calls": calls, "responses": responses}
+
+
+@pytest.fixture
+def auth_headers():
+    """直接为本机已存在用户签发 JWT 构造认证头（不走登录）。"""
+    from app.services.auth_service import issue_token
+
+    def _make(user) -> dict[str, str]:
+        return {"Authorization": f"Bearer {issue_token(user)}"}
+
+    return _make

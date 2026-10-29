@@ -36,6 +36,16 @@ class OVAdminAPI:
     async def delete_account(self, account_id: str) -> Any:
         return await self.c.request("DELETE", f"/api/v1/admin/accounts/{account_id}")
 
+    async def get_configuration(self, account_id: str) -> Any:
+        return await self.c.request(
+            "GET", f"/api/v1/admin/accounts/{account_id}/configuration"
+        )
+
+    async def get_settings(self, account_id: str) -> Any:
+        return await self.c.request(
+            "GET", f"/api/v1/admin/accounts/{account_id}/settings"
+        )
+
     # ---------- users ----------
     async def list_users(self, account_id: str) -> Any:
         return await self.c.request("GET", f"/api/v1/admin/accounts/{account_id}/users")

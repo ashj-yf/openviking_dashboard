@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_session
 from app.core.security import decode_access_token
 from app.models import DashboardUser
+from app.services.openviking.admin import OVAdminAPI
 from app.services.openviking.client import OVClient, OpenVikingError, root_client
 from app.services.openviking.system import OVSystemAPI
 
@@ -34,6 +35,13 @@ def ov_system_api(client: RootOVClient) -> OVSystemAPI:
 
 
 OVSystemDep = Annotated[OVSystemAPI, Depends(ov_system_api)]
+
+
+def ov_admin_api(client: RootOVClient) -> OVAdminAPI:
+    return OVAdminAPI(client)
+
+
+OVAdminDep = Annotated[OVAdminAPI, Depends(ov_admin_api)]
 
 
 # ---------------------------------------------------------------------------

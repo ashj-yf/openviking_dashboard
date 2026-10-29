@@ -10,7 +10,10 @@ class AuditLog(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     actor_user_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("dashboard_users.id"), nullable=True, index=True
+        Integer,
+        ForeignKey("dashboard_users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     actor_name: Mapped[str] = mapped_column(String(64))
     action: Mapped[str] = mapped_column(String(64), index=True)  # tenant.create / user.key ...
