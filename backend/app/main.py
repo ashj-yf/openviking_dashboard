@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.v1.auth import admin_users_router, router as auth_router
 from app.api.v1.tenants import router as tenants_router
+from app.api.v1.users import router as users_router
 from app.core.config import ConfigError, get_settings, validate_settings
 from app.core.db import SessionLocal, engine
 from app.core.deps import DBSession
@@ -60,6 +61,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(admin_users_router, prefix="/api/v1")
     app.include_router(tenants_router, prefix="/api/v1")
+    app.include_router(users_router, prefix="/api/v1")
     return app
 
 
