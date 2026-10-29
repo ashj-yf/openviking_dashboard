@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Spin } from "antd";
 import { useQueryClient } from "@tanstack/react-query";
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
@@ -6,9 +6,10 @@ import { authExpired } from "@/api/client";
 import type { Me } from "@/api/auth";
 import { qk } from "@/api/query-keys";
 import { useAuth } from "@/auth/auth-context";
-import { homePathFor } from "@/auth/permissions";
+import { homePathFor, type Role } from "@/auth/permissions";
 import { AppLayout } from "@/layouts/AppLayout";
 import { ChangePasswordPage } from "@/pages/ChangePasswordPage";
+import { ForbiddenPage } from "@/pages/errors/ForbiddenPage";
 import { NotFoundPage } from "@/pages/errors/NotFoundPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { getToken } from "@/auth/token-store";
@@ -43,6 +44,16 @@ function RequireAuth() {
   // 引导未决不在此拦截——/change-password 必须立即可达，应用区由 BootstrapGate 等待。
   if (!me && !isLoading) return <Navigate to="/login" replace />;
   return <Outlet />;
+}
+
+export function RequireRole({ allow, children }: { allow: Role | Role[]; children: ReactNode }) {
+  const { me } = useAuth();
+  // 生产路径上 RequireRole 总在 RequireAuth 之内（me 必然已就绪）；
+  // me 未就绪时不判定，避免会话引导期间误重定向到 /403。
+  if (!me) return null;
+  const roles = Array.isArray(allow) ? allow : [allow];
+  if (roles.includes(me.role as Role)) return <>{children}</>;
+  return <Navigate to="/403" replace />;
 }
 
 /** 应用区（含 HomeRedirect）等待 /me 落地，避免按默认角色误跳再纠正。 */
@@ -91,6 +102,7 @@ export function AppRoutes() {
                 <Route path="/tenants" element={<PlaceholderPage title="团队管理" />} />
                 <Route path="/users" element={<PlaceholderPage title="用户管理" />} />
                 <Route path="/credentials" element={<PlaceholderPage title="我的凭证" />} />
+                <Route path="/403" element={<ForbiddenPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
             </Route>
