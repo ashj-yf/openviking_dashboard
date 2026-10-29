@@ -110,7 +110,10 @@ export async function apiRequest<T>(
     const error = await parseError(response);
     if (response.status === 401) {
       clearToken();
-      authExpired.dispatchEvent(new Event("expired"));
+      // 登录端点的 401 是账密错误而非会话过期，不应广播过期事件、误导展示过期提示。
+      if (!path.endsWith("/auth/login")) {
+        authExpired.dispatchEvent(new Event("expired"));
+      }
     }
     throw error;
   }

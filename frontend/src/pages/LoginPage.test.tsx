@@ -73,5 +73,7 @@ describe("LoginPage", () => {
     expect((screen.getByLabelText("用户名") as HTMLInputElement).value).toBe("alice");
     expect(localStorage.getItem("ov-dashboard-token")).toBeNull();
     expect(within(document.body).queryByText(/\/credentials/)).toBeNull();
+    // 登录端点 401 不代表会话过期，不应渲染过期警示条
+    expect(screen.queryByText("登录状态已过期，请重新登录")).toBeNull();
   });
 });
