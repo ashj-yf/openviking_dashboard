@@ -1,19 +1,25 @@
-"""团队领域逻辑：列表/详情聚合/本地编辑/同步；创建与删除在 Task 3 追加。"""
+"""团队领域逻辑：列表/详情聚合/本地编辑/同步/创建/硬删。"""
 import logging
 from datetime import datetime, timezone
 
+from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import DashboardUser, Tenant
+from app.core.crypto import encrypt_secret
+from app.core.security import hash_password
+from app.models import DashboardUser, KeyRecord, Tenant
 from app.schemas.tenant import (
     SyncUserInfo,
+    TenantCreatedOut,
+    TenantCreateRequest,
     TenantDetailOut,
-    TenantListItem,
     TenantSyncReport,
 )
+from app.services import audit_service
 from app.services.openviking.client import OpenVikingError
 from app.services.openviking.payloads import (
+    extract_admin_key,
     extract_remote_role,
     extract_remote_user_id,
     extract_users_list,
@@ -146,3 +152,121 @@ async def user_count(db: AsyncSession, tenant_id: int) -> int:
 
 async def get_raw(db: AsyncSession, tenant_id: int) -> Tenant | None:
     return await db.get(Tenant, tenant_id)
+
+
+async def create_tenant(
+    db: AsyncSession, admin_api, actor, payload: TenantCreateRequest, *, ip: str | None
+) -> TenantCreatedOut:
+    # 本地先拦重复，避免无谓 OV 调用
+    exists = await db.scalar(
+        select(Tenant).where(Tenant.ov_account_id == payload.account_id)
+    )
+    if exists is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "团队 account_id 已存在")
+
+    username_exists = await db.scalar(
+        select(DashboardUser).where(DashboardUser.username == payload.admin_username)
+    )
+    if username_exists is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "登录名已存在")
+
+    # 先 OV：OV 失败时本地零写入（OpenVikingError 由全局处理器透传）
+    resp = await admin_api.create_account(
+        payload.account_id,
+        payload.admin_user_id,
+        seed=payload.seed,
+    )
+
+    tenant = Tenant(
+        ov_account_id=payload.account_id,
+        admin_user_id=payload.admin_user_id,
+        display_name=payload.display_name,
+        remark=payload.remark,
+    )
+    db.add(tenant)
+    try:
+        await db.flush()  # 拿到 tenant.id
+    except Exception:  # noqa: BLE001 - re-raised as HTTP 500 below
+        logger.error("OV 账户已创建但本地 tenants 落库失败 account=%s", payload.account_id)
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "OpenViking 账户已创建但本地记录失败，请在列表执行同步补偿",
+        )
+
+    # 初始 team_admin：先落用户行拿到 id，再写 key_record
+    admin_key = extract_admin_key(resp)
+    team_admin = DashboardUser(
+        username=payload.admin_username,
+        password_hash=hash_password(payload.admin_password),
+        role="team_admin",
+        is_active=True,  # 初始 team_admin 允许先登录改密；key 缺失时凭证页提示重签
+        tenant_id=tenant.id,
+        ov_user_id=payload.admin_user_id,
+        ov_role="admin",
+        ov_user_key_encrypted=encrypt_secret(admin_key) if admin_key else None,
+        key_synced_at=datetime.now(timezone.utc) if admin_key else None,
+        must_change_password=True,
+    )
+    db.add(team_admin)
+    await db.flush()  # 拿到 team_admin.id
+    if admin_key:
+        db.add(KeyRecord(
+            tenant_id=tenant.id,
+            dashboard_user_id=team_admin.id,
+            ov_user_id=payload.admin_user_id,
+            key_kind="admin",
+            key_hint=admin_key[:8],
+            seed_used=payload.seed is not None,
+            issued_by=actor.id if actor else None,
+        ))
+    await db.commit()
+
+    await audit_service.record(
+        db, "tenant.create", actor=actor,
+        target_type="tenant", target_id=payload.account_id,
+        detail={"display_name": payload.display_name, "key_provisioned": bool(admin_key)},
+        ip=ip,
+    )
+    await audit_service.record(
+        db, "user.create", actor=actor,
+        target_type="dashboard_user", target_id=str(team_admin.id),
+        detail={"source": "tenant_init_admin", "tenant": payload.account_id,
+                "username": payload.admin_username, "key_provisioned": bool(admin_key),
+                "seed_used": payload.seed is not None},
+        ip=ip,
+    )
+
+    return TenantCreatedOut(
+        id=tenant.id,
+        account_id=payload.account_id,
+        admin_user_id=payload.admin_user_id,
+        team_admin_id=team_admin.id,
+        team_admin_username=team_admin.username,
+        key_provisioned=bool(admin_key),
+    )
+
+
+async def delete_tenant(
+    db: AsyncSession, admin_api, tenant_id: int, *, confirm: bool,
+    actor, ip: str | None,
+) -> None:
+    if not confirm:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "请确认删除操作")
+    tenant = await db.get(Tenant, tenant_id)
+    if tenant is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "团队不存在")
+    try:
+        await admin_api.delete_account(tenant.ov_account_id)
+    except OpenVikingError:
+        await audit_service.record(
+            db, "tenant.delete.fail", actor=actor, target_type="tenant",
+            target_id=tenant.ov_account_id, ip=ip,
+        )
+        raise
+    await audit_service.record(
+        db, "tenant.delete", actor=actor, target_type="tenant",
+        target_id=tenant.ov_account_id,
+        detail={"user_count": await user_count(db, tenant_id)}, ip=ip,
+    )
+    await db.delete(tenant)
+    await db.commit()

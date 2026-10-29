@@ -52,3 +52,26 @@ class TenantSyncReport(BaseModel):
     missing_local: list[SyncUserInfo] = []
     extra_local: list[SyncUserInfo] = []
     synced_at: datetime
+
+
+class TenantCreateRequest(BaseModel):
+    account_id: str = Field(pattern=ID_PATTERN)
+    admin_user_id: str = Field(pattern=ID_PATTERN)
+    admin_username: str = Field(min_length=1, max_length=64)
+    admin_password: str = Field(min_length=8, max_length=128)
+    display_name: str | None = Field(default=None, min_length=1, max_length=128)
+    remark: str | None = Field(default=None, min_length=1, max_length=500)
+    seed: str | None = Field(default=None, min_length=1, max_length=256)
+
+
+class TenantCreatedOut(BaseModel):
+    id: int
+    account_id: str
+    admin_user_id: str
+    team_admin_id: int
+    team_admin_username: str
+    key_provisioned: bool
+
+
+class TenantDeleteRequest(BaseModel):
+    confirm: bool = False

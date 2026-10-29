@@ -1,8 +1,11 @@
 """团队管理路由（平台 admin 专属）。"""
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 
 from app.core.deps import AdminUser, DBSession, OVAdminDep
 from app.schemas.tenant import (
+    TenantCreatedOut,
+    TenantCreateRequest,
+    TenantDeleteRequest,
     TenantDetailOut,
     TenantListItem,
     TenantSyncReport,
@@ -83,3 +86,31 @@ async def sync_tenant(
         ip=request.client.host if request.client else None,
     )
     return report
+
+
+@router.post("", status_code=status.HTTP_201_CREATED, response_model=TenantCreatedOut)
+async def create_tenant(
+    payload: TenantCreateRequest,
+    request: Request,
+    db: DBSession,
+    ov: OVAdminDep,
+    admin: AdminUser,
+):
+    ip = request.client.host if request.client else None
+    return await tenant_service.create_tenant(db, ov, admin, payload, ip=ip)
+
+
+@router.delete("/{tenant_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_tenant(
+    tenant_id: int,
+    payload: TenantDeleteRequest,
+    request: Request,
+    db: DBSession,
+    ov: OVAdminDep,
+    admin: AdminUser,
+):
+    ip = request.client.host if request.client else None
+    await tenant_service.delete_tenant(
+        db, ov, tenant_id, confirm=payload.confirm, actor=admin, ip=ip
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
