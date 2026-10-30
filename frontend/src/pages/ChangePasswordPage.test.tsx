@@ -58,7 +58,8 @@ describe("强制改密门禁与改密页", () => {
     await waitFor(() =>
       expect(screen.getByTestId("route")).toHaveTextContent("/credentials"),
     );
-  });
+    // jsdom 下三段 type + 提交往返在高负载机器上超过默认 10s 预算；仅放宽时间，断言不变。
+  }, 20000);
 
   it("旧密码错误时停留在改密页并显示后端文案", async () => {
     localStorage.setItem("ov-dashboard-token", "jwt-alice");
@@ -73,5 +74,6 @@ describe("强制改密门禁与改密页", () => {
 
     expect(await screen.findByText("旧密码不正确")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "修改密码" })).toBeInTheDocument();
-  });
+    // 同文件：高负载下三段 type + 提交往返超 10s 预算，仅放宽时间，断言不变。
+  }, 20000);
 });

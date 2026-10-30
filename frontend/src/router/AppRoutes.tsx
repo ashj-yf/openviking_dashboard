@@ -12,6 +12,7 @@ import { ChangePasswordPage } from "@/pages/ChangePasswordPage";
 import { ForbiddenPage } from "@/pages/errors/ForbiddenPage";
 import { NotFoundPage } from "@/pages/errors/NotFoundPage";
 import { LoginPage } from "@/pages/LoginPage";
+import { TenantListPage } from "@/pages/tenants/TenantListPage";
 import { getToken } from "@/auth/token-store";
 
 /** 监听 401 事件，统一跳登录（Api client 已在此前清除 token）。 */
@@ -98,8 +99,15 @@ export function AppRoutes() {
             <Route element={<ForceChangeGate />}>
               <Route element={<AppLayout />}>
                 <Route index element={<HomeRedirect />} />
-                {/* 落地占位：T4/T6/T8 分别替换为带 RequireRole 的真实页面 */}
-                <Route path="/tenants" element={<PlaceholderPage title="团队管理" />} />
+                <Route
+                  path="/tenants"
+                  element={
+                    <RequireRole allow="admin">
+                      <TenantListPage />
+                    </RequireRole>
+                  }
+                />
+                {/* 落地占位：T6/T8 分别替换为带 RequireRole 的真实页面 */}
                 <Route path="/users" element={<PlaceholderPage title="用户管理" />} />
                 <Route path="/credentials" element={<PlaceholderPage title="我的凭证" />} />
                 <Route path="/403" element={<ForbiddenPage />} />

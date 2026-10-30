@@ -41,7 +41,9 @@ describe("Sider RBAC 菜单", () => {
     resetAuthMock(makeMe({ role: "admin" }));
     renderWithProviders(<AppRoutes />, { route: "/" });
 
-    expect(await screen.findByText("团队管理")).toBeInTheDocument();
+    // 落地 /tenants 后页面标题也含“团队管理”，断言需限定到侧边菜单项；
+    // 菜单项前置图标带 aria-label="team"，可访问名形如 "team 团队管理"，故用正则匹配。
+    expect(await screen.findByRole("menuitem", { name: /团队管理/ })).toBeInTheDocument();
     expect(screen.getByText("用户管理")).toBeInTheDocument();
     expect(screen.queryByText("我的凭证")).toBeNull();
   });
