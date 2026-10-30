@@ -1,0 +1,329 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "OpenViking Dashboard", "version": "0.2.0-contract" },
+  "paths": {
+    "/healthz": {
+      "get": { "tags": ["system"], "responses": { "200": { "description": "健康状态", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HealthResponse" } } } } } }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": ["auth"],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } } } },
+        "responses": { "200": { "description": "登录成功", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TokenResponse" } } } } }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": { "tags": ["auth"], "responses": { "204": { "description": "已注销" } } }
+    },
+    "/api/v1/auth/me": {
+      "get": { "tags": ["auth"], "responses": { "200": { "description": "当前用户", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MeOut" } } } } } }
+    },
+    "/api/v1/auth/change-password": {
+      "post": {
+        "tags": ["auth"],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ChangePasswordRequest" } } } },
+        "responses": { "204": { "description": "修改成功" } }
+      }
+    },
+    "/api/v1/tenants": {
+      "get": { "tags": ["tenants"], "parameters": [{ "name": "q", "in": "query", "required": false, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "团队列表", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TenantListItem" } } } } } } },
+      "post": {
+        "tags": ["tenants"],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TenantCreateRequest" } } } },
+        "responses": { "201": { "description": "已创建", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TenantCreatedOut" } } } } }
+      }
+    },
+    "/api/v1/tenants/{tenant_id}": {
+      "get": { "tags": ["tenants"], "parameters": [{ "name": "tenant_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "团队详情", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TenantDetailOut" } } } } } },
+      "patch": {
+        "tags": ["tenants"],
+        "parameters": [{ "name": "tenant_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TenantUpdateRequest" } } } },
+        "responses": { "200": { "description": "已更新", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TenantListItem" } } } } }
+      },
+      "delete": {
+        "tags": ["tenants"],
+        "parameters": [{ "name": "tenant_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TenantDeleteRequest" } } } },
+        "responses": { "204": { "description": "已删除" } }
+      }
+    },
+    "/api/v1/tenants/{tenant_id}/sync": {
+      "post": { "tags": ["tenants"], "parameters": [{ "name": "tenant_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "同步报告", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TenantSyncReport" } } } } } }
+    },
+    "/api/v1/users": {
+      "get": { "tags": ["users"],
+        "parameters": [
+          { "name": "tenant_id", "in": "query", "required": false, "schema": { "type": "integer" } },
+          { "name": "keyword", "in": "query", "required": false, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "用户列表", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/UserOut" } } } } } } },
+      "post": {
+        "tags": ["users"],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserCreateRequest" } } } },
+        "responses": { "201": { "description": "已开通", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserOut" } } } } }
+      }
+    },
+    "/api/v1/users/{user_id}/role": {
+      "patch": {
+        "tags": ["users"],
+        "parameters": [{ "name": "user_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserRoleRequest" } } } },
+        "responses": { "200": { "description": "已更新", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserOut" } } } } }
+      }
+    },
+    "/api/v1/users/{user_id}/reset-password": {
+      "post": {
+        "tags": ["users"],
+        "parameters": [{ "name": "user_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserResetPasswordRequest" } } } },
+        "responses": { "204": { "description": "已重置" } }
+      }
+    },
+    "/api/v1/users/{user_id}/disable": {
+      "post": { "tags": ["users"], "parameters": [{ "name": "user_id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "204": { "description": "已禁用" } } }
+    },
+    "/api/v1/users/{user_id}/enable": {
+      "post": { "tags": ["users"], "parameters": [{ "name": "user_id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "204": { "description": "已启用" } } }
+    },
+    "/api/v1/users/{user_id}/regenerate-key": {
+      "post": {
+        "tags": ["users"],
+        "parameters": [{ "name": "user_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/KeyRegenerateRequest" } } } },
+        "responses": { "200": { "description": "新 key 已签发", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserOut" } } } } }
+      }
+    },
+    "/api/v1/users/{user_id}": {
+      "delete": { "tags": ["users"], "parameters": [{ "name": "user_id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "204": { "description": "已销户" } } }
+    },
+    "/api/v1/users/{user_id}/sync": {
+      "post": { "tags": ["users"], "parameters": [{ "name": "user_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "校准报告", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserSyncReport" } } } } } }
+    },
+    "/api/v1/credentials": {
+      "get": { "tags": ["credentials"], "responses": { "200": { "description": "凭证视图", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CredentialView" } } } } } }
+    },
+    "/api/v1/credentials/reveal": {
+      "post": { "tags": ["credentials"], "responses": { "200": { "description": "明文 key（审计 key.view）", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RevealedKeyOut" } } } } } }
+    },
+    "/api/v1/credentials/copy": {
+      "post": { "tags": ["credentials"], "responses": { "200": { "description": "明文 key（审计 key.copy）", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RevealedKeyOut" } } } } } }
+    },
+    "/api/v1/credentials/regenerate": {
+      "post": {
+        "tags": ["credentials"],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/KeyRegenerateRequest" } } } },
+        "responses": { "200": { "description": "重签后的明文 key", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RevealedKeyOut" } } } } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "type": "object", "required": ["status", "db", "openviking"],
+        "properties": {
+          "status": { "type": "string", "enum": ["ok", "degraded"] },
+          "db": { "type": "boolean" },
+          "openviking": { "type": "boolean" },
+          "version": { "type": ["string", "null"] }
+        }
+      },
+      "LoginRequest": {
+        "type": "object", "required": ["username", "password"],
+        "properties": { "username": { "type": "string" }, "password": { "type": "string" } }
+      },
+      "TokenResponse": {
+        "type": "object", "required": ["access_token", "expires_in", "role"],
+        "properties": {
+          "access_token": { "type": "string" },
+          "token_type": { "type": "string", "default": "bearer" },
+          "expires_in": { "type": "integer" },
+          "role": { "type": "string" }
+        }
+      },
+      "MeOut": {
+        "type": "object", "required": ["id", "username", "role", "is_active"],
+        "properties": {
+          "id": { "type": "integer" },
+          "username": { "type": "string" },
+          "role": { "type": "string", "enum": ["admin", "team_admin", "user"] },
+          "is_active": { "type": "boolean" },
+          "tenant_id": { "type": ["integer", "null"] },
+          "account_id": { "type": ["string", "null"] },
+          "ov_user_id": { "type": ["string", "null"] },
+          "ov_role": { "type": ["string", "null"] },
+          "has_ov_key": { "type": "boolean" },
+          "key_synced_at": { "type": ["string", "null"], "format": "date-time" },
+          "must_change_password": { "type": "boolean" },
+          "last_login_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "ChangePasswordRequest": {
+        "type": "object", "required": ["old_password", "new_password"],
+        "properties": { "old_password": { "type": "string" }, "new_password": { "type": "string", "minLength": 8, "maxLength": 128 } }
+      },
+      "TenantListItem": {
+        "type": "object", "required": ["id", "account_id", "admin_user_id", "user_count"],
+        "properties": {
+          "id": { "type": "integer" },
+          "account_id": { "type": "string" },
+          "display_name": { "type": ["string", "null"] },
+          "remark": { "type": ["string", "null"] },
+          "admin_user_id": { "type": "string" },
+          "user_count": { "type": "integer" },
+          "synced_at": { "type": ["string", "null"], "format": "date-time" },
+          "created_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "TenantDetailOut": {
+        "allOf": [{ "$ref": "#/components/schemas/TenantListItem" }, {
+          "type": "object",
+          "properties": {
+            "ov_account": { "type": ["object", "null"], "additionalProperties": true },
+            "configuration": { "type": ["object", "null"], "additionalProperties": true },
+            "settings": { "type": ["object", "null"], "additionalProperties": true },
+            "ov_error": { "type": ["string", "null"] }
+          }
+        }]
+      },
+      "TenantCreateRequest": {
+        "type": "object", "required": ["account_id", "admin_user_id", "admin_username", "admin_password"],
+        "properties": {
+          "account_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "admin_user_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "admin_username": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "admin_password": { "type": "string", "minLength": 8, "maxLength": 128 },
+          "display_name": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 },
+          "remark": { "type": ["string", "null"], "minLength": 1, "maxLength": 500 },
+          "seed": { "type": ["string", "null"], "minLength": 1, "maxLength": 256 }
+        }
+      },
+      "TenantCreatedOut": {
+        "type": "object",
+        "required": ["id", "account_id", "admin_user_id", "team_admin_id", "team_admin_username", "key_provisioned"],
+        "properties": {
+          "id": { "type": "integer" },
+          "account_id": { "type": "string" },
+          "admin_user_id": { "type": "string" },
+          "team_admin_id": { "type": "integer" },
+          "team_admin_username": { "type": "string" },
+          "key_provisioned": { "type": "boolean" }
+        }
+      },
+      "TenantUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "display_name": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 },
+          "remark": { "type": ["string", "null"], "minLength": 1, "maxLength": 500 }
+        }
+      },
+      "TenantDeleteRequest": {
+        "type": "object",
+        "properties": {
+          "confirm": { "type": "boolean", "default": false }
+        }
+      },
+      "SyncUserInfo": {
+        "type": "object", "required": ["ov_user_id"],
+        "properties": {
+          "ov_user_id": { "type": "string" },
+          "ov_role": { "type": ["string", "null"] },
+          "username": { "type": ["string", "null"] }
+        }
+      },
+      "TenantSyncReport": {
+        "type": "object",
+        "required": ["account_id", "ov_user_count", "local_user_count", "matched", "synced_at"],
+        "properties": {
+          "account_id": { "type": "string" },
+          "ov_user_count": { "type": "integer" },
+          "local_user_count": { "type": "integer" },
+          "matched": { "type": "integer" },
+          "missing_local": { "type": "array", "items": { "$ref": "#/components/schemas/SyncUserInfo" } },
+          "extra_local": { "type": "array", "items": { "$ref": "#/components/schemas/SyncUserInfo" } },
+          "synced_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "UserCreateRequest": {
+        "type": "object", "required": ["username", "password"],
+        "properties": {
+          "username": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "password": { "type": "string", "minLength": 8, "maxLength": 128 },
+          "tenant_id": { "type": ["integer", "null"] },
+          "ov_user_id": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "role": { "type": "string", "enum": ["team_admin", "user"], "default": "user" },
+          "seed": { "type": ["string", "null"], "minLength": 1, "maxLength": 256 }
+        }
+      },
+      "UserOut": {
+        "type": "object", "required": ["id", "username", "role", "is_active"],
+        "properties": {
+          "id": { "type": "integer" },
+          "username": { "type": "string" },
+          "role": { "type": "string", "enum": ["admin", "team_admin", "user"] },
+          "is_active": { "type": "boolean" },
+          "tenant_id": { "type": ["integer", "null"] },
+          "account_id": { "type": ["string", "null"] },
+          "ov_user_id": { "type": ["string", "null"] },
+          "ov_role": { "type": ["string", "null"] },
+          "has_key": { "type": "boolean" },
+          "key_state": { "type": "string", "enum": ["current", "pending"] },
+          "key_synced_at": { "type": ["string", "null"], "format": "date-time" },
+          "must_change_password": { "type": "boolean" },
+          "last_login_at": { "type": ["string", "null"], "format": "date-time" },
+          "created_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "UserRoleRequest": {
+        "type": "object", "required": ["role"],
+        "properties": { "role": { "type": "string", "enum": ["team_admin", "user"] } }
+      },
+      "UserResetPasswordRequest": {
+        "type": "object", "required": ["new_password"],
+        "properties": {
+          "new_password": { "type": "string", "minLength": 8, "maxLength": 128 },
+          "regenerate_key": { "type": "boolean", "default": false },
+          "seed": { "type": ["string", "null"], "minLength": 1, "maxLength": 256 }
+        }
+      },
+      "KeyRegenerateRequest": {
+        "type": "object",
+        "properties": { "seed": { "type": ["string", "null"], "minLength": 1, "maxLength": 256 } }
+      },
+      "UserSyncReport": {
+        "type": "object", "required": ["account_id", "ov_user_id", "ov_exists", "consistent"],
+        "properties": {
+          "account_id": { "type": "string" },
+          "ov_user_id": { "type": "string" },
+          "ov_exists": { "type": "boolean" },
+          "local_ov_role": { "type": ["string", "null"] },
+          "ov_role": { "type": ["string", "null"] },
+          "consistent": { "type": "boolean" }
+        }
+      },
+      "CredentialView": {
+        "type": "object", "required": ["endpoint", "account_id", "ov_user_id", "has_key"],
+        "properties": {
+          "endpoint": { "type": "string" },
+          "account_id": { "type": "string" },
+          "ov_user_id": { "type": "string" },
+          "has_key": { "type": "boolean" },
+          "key_masked": { "type": ["string", "null"] },
+          "key_hint": { "type": ["string", "null"] },
+          "seed_used": { "type": "boolean" },
+          "key_synced_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "RevealedKeyOut": {
+        "allOf": [{ "$ref": "#/components/schemas/CredentialView" }, {
+          "type": "object", "required": ["key"],
+          "properties": { "key": { "type": "string" } }
+        }]
+      }
+    }
+  }
+}

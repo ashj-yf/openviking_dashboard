@@ -1,0 +1,94 @@
+import { useMemo, type ReactNode } from "react";
+import { Dropdown, Layout, Menu, Space, Typography } from "antd";
+import type { MenuProps } from "antd";
+import {
+  KeyOutlined,
+  LogoutOutlined,
+  TeamOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { HealthDot } from "@/components/HealthDot";
+import { useAuth } from "@/auth/auth-context";
+import { can, type Permission } from "@/auth/permissions";
+
+const { Header, Sider, Content } = Layout;
+
+const NAV_ITEMS: { key: string; label: string; permission: Permission; icon: ReactNode }[] = [
+  { key: "/tenants", label: "团队管理", permission: "tenants:manage", icon: <TeamOutlined /> },
+  { key: "/users", label: "用户管理", permission: "users:manage", icon: <UserOutlined /> },
+  { key: "/credentials", label: "我的凭证", permission: "credentials:view", icon: <KeyOutlined /> },
+];
+
+export function AppLayout() {
+  const { me, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const menuItems = useMemo(
+    () => NAV_ITEMS.filter((item) => can(me?.role, item.permission)),
+    [me?.role],
+  );
+
+  const userMenu: MenuProps["items"] = [
+    { key: "change-password", icon: <KeyOutlined />, label: "修改密码" },
+    { type: "divider" },
+    { key: "logout", icon: <LogoutOutlined />, label: "注销", danger: true },
+  ];
+
+  const onUserMenuClick: MenuProps["onClick"] = async ({ key }) => {
+    if (key === "change-password") navigate("/change-password");
+    if (key === "logout") {
+      await logout();
+      navigate("/login", { replace: true });
+    }
+  };
+
+  return (
+    <Layout style={{ minHeight: "100vh" }} hasSider>
+      <Sider theme="dark" width={208}>
+        <div
+          style={{
+            color: "#fff",
+            fontWeight: 600,
+            height: 48,
+            margin: 16,
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          OpenViking
+        </div>
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          items={menuItems.map(({ key, label, icon }) => ({ key, label, icon }))}
+          onClick={({ key }) => navigate(key)}
+        />
+      </Sider>
+      <Layout>
+        <Header
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingInline: 24,
+            background: "#fff",
+          }}
+        >
+          <HealthDot />
+          <Dropdown menu={{ items: userMenu, onClick: onUserMenuClick }} trigger={["click"]}>
+            <Space style={{ cursor: "pointer" }} data-testid="user-menu">
+              <UserOutlined />
+              <Typography.Text>{me?.username}</Typography.Text>
+            </Space>
+          </Dropdown>
+        </Header>
+        <Content style={{ padding: 24 }}>
+          <Outlet />
+        </Content>
+      </Layout>
+    </Layout>
+  );
+}
