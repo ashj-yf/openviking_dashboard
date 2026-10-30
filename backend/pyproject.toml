@@ -29,3 +29,9 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 pythonpath = ["."]
 testpaths = ["tests"]
+filterwarnings = [
+    "error",
+    # starlette 1.10 起 TestClient 要求 httpx2；当前测试栈统一用 httpx 0.28（ASGITransport 同栈），
+    # 仅精确放行这一条第三方弃用提示，业务代码自身的警告仍按 error 处理。
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated:starlette.exceptions.StarletteDeprecationWarning",
+]
