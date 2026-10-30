@@ -1,10 +1,13 @@
 """OpenViking Dashboard 后端入口。"""
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.auth import admin_users_router, router as auth_router
 from app.api.v1.tenants import router as tenants_router
@@ -18,6 +21,29 @@ from app.services.health_service import get_health
 from app.services.openviking.client import OpenVikingError
 
 logger = logging.getLogger("app")
+
+# 容器内前端静态产物固定路径（Dockerfile 多阶段构建把 vite dist COPY 到此处）。
+# 本地开发通常没有该目录，此时不挂载静态托管，API 与本地 Vite 工作流不受影响。
+STATIC_DIR = Path("/app/static")
+
+
+class SPAStaticFiles(StaticFiles):
+    """html=True 的 StaticFiles：GET/HEAD 未命中静态文件时回退 index.html。
+
+    /api/* 与 /healthz 的 404 不回退（它们在路由表中先于本挂载注册，
+    这里的判断仅用于兜住进入静态挂载的未知 /api/* 深链，确保返回 JSON 404）。
+    """
+
+    async def get_response(self, path: str, scope):  # type: ignore[override]
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            if exc.status_code != 404 or scope["method"] not in ("GET", "HEAD"):
+                raise
+            request_path = scope.get("path", "")
+            if request_path == "/healthz" or request_path.startswith("/api/"):
+                raise
+            return await super().get_response("index.html", scope)
 
 
 @asynccontextmanager
@@ -62,6 +88,14 @@ def create_app() -> FastAPI:
     app.include_router(admin_users_router, prefix="/api/v1")
     app.include_router(tenants_router, prefix="/api/v1")
     app.include_router(users_router, prefix="/api/v1")
+
+    # 最后挂静态产物：路由按注册顺序匹配，/healthz、/api/v1/* 已先注册。
+    if STATIC_DIR.is_dir():
+        app.mount(
+            "/",
+            SPAStaticFiles(directory=str(STATIC_DIR), html=True),
+            name="spa-static",
+        )
     return app
 
 
