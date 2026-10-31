@@ -1,5 +1,4 @@
 """用户开通、列表与生命周期管理路由。"""
-import pytest
 from sqlalchemy import select
 
 from app.core.crypto import decrypt_secret
@@ -378,3 +377,116 @@ async def test_sync_user_missing_remote(client, make_user, make_tenant, auth_hea
     body = r.json()
     assert body["ov_exists"] is False
     assert body["consistent"] is False
+
+
+# ---------- USER-5 对抗：重签/重置联动不得复活正常停用账号 ----------
+async def test_regenerate_does_not_revive_disabled_user_with_key(
+    client, db, make_user, make_tenant, auth_headers, ov_calls
+):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    u = await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="alice",
+                        ov_role="user", ov_key="old-key-1234567", is_active=False)
+    ov_calls["responses"].append((200, {"key": "new-key-76543210"}))
+    r = await client.post(
+        f"/api/v1/users/{u.id}/regenerate-key", json={}, headers=auth_headers(admin)
+    )
+    assert r.status_code == 200
+    await db.refresh(u)
+    assert decrypt_secret(u.ov_user_key_encrypted) == "new-key-76543210"
+    assert u.is_active is False  # 正常停用账号重签不改变启用位
+
+
+async def test_team_admin_regenerate_does_not_revive_disabled_member(
+    client, db, make_user, make_tenant, auth_headers, ov_calls
+):
+    t = await make_tenant("acme")
+    ta = await make_user("boss", "Passw0rd!", "team_admin", tenant=t, ov_user_id="boss")
+    u = await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="alice",
+                        ov_role="user", ov_key="old-key-1234567", is_active=False)
+    ov_calls["responses"].append((200, {"key": "new-key-76543210"}))
+    r = await client.post(
+        f"/api/v1/users/{u.id}/regenerate-key", json={}, headers=auth_headers(ta)
+    )
+    assert r.status_code == 200
+    await db.refresh(u)
+    assert decrypt_secret(u.ov_user_key_encrypted) == "new-key-76543210"
+    assert u.is_active is False  # team_admin 路径同样不复活
+
+
+async def test_reset_with_rotation_keeps_disabled_user_inactive(
+    client, db, make_user, make_tenant, auth_headers, ov_calls
+):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    u = await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="alice",
+                        ov_role="user", ov_key="old-key-1234567", is_active=False)
+    ov_calls["responses"].append((200, {"key": "new-key-76543210"}))
+    r = await client.post(
+        f"/api/v1/users/{u.id}/reset-password",
+        json={"new_password": "New#123456", "regenerate_key": True},
+        headers=auth_headers(admin),
+    )
+    assert r.status_code == 204
+    await db.refresh(u)
+    assert u.is_active is False
+    assert decrypt_secret(u.ov_user_key_encrypted) == "new-key-76543210"
+    # 仍停用：即便密码已换，登录被 authenticate 以停用拒绝（401）
+    login = await client.post(
+        "/api/v1/auth/login",
+        json={"username": "alice", "password": "New#123456"},
+    )
+    assert login.status_code == 401
+
+
+async def test_reset_rotation_ov_failure_keeps_password_and_no_audit(
+    client, db, make_user, make_tenant, auth_headers, ov_calls
+):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    u = await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="alice",
+                        ov_role="user", ov_key="old-key-1234567")
+    old_hash = u.password_hash
+    ov_calls["responses"].append((500, {"detail": "boom"}))
+    r = await client.post(
+        f"/api/v1/users/{u.id}/reset-password",
+        json={"new_password": "New#123456", "regenerate_key": True},
+        headers=auth_headers(admin),
+    )
+    assert r.status_code == 500
+    await db.refresh(u)
+    assert u.password_hash == old_hash  # rotate 失败抛在改密之前
+    assert (
+        await db.scalars(
+            select(AuditLog).where(AuditLog.action == "user.password.reset")
+        )
+    ).all() == []
+
+
+# ---------- USER-7 同步补测：409 分支与 consistent=True ----------
+async def test_sync_platform_admin_target_conflicts(
+    client, make_user, auth_headers
+):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    other = await make_user("root2", "Admin#12345", "admin")
+    r = await client.post(
+        f"/api/v1/users/{other.id}/sync", headers=auth_headers(admin)
+    )
+    assert r.status_code == 409
+
+
+async def test_sync_consistent_when_remote_role_matches(
+    client, make_user, make_tenant, auth_headers, ov_calls
+):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    u = await make_user("alice", "Passw0rd!", "user", tenant=t,
+                        ov_user_id="alice", ov_role="user")
+    ov_calls["responses"].append(
+        (200, {"users": [{"user_id": "alice", "role": "user"}]})
+    )
+    r = await client.post(f"/api/v1/users/{u.id}/sync", headers=auth_headers(admin))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ov_exists"] is True
+    assert body["consistent"] is True

@@ -2,7 +2,7 @@
 import pytest
 from sqlalchemy import select
 
-from app.models import AuditLog, DashboardUser, KeyRecord, Tenant
+from app.models import AuditLog, DashboardUser, KeyRecord
 
 
 async def test_sqlite_foreign_keys_enabled(engine):

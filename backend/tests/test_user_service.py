@@ -1,9 +1,11 @@
 """team_admin 范围守卫与开通流程。"""
+import json
+
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import select
 
-from app.models import DashboardUser, KeyRecord
+from app.models import AuditLog, DashboardUser, KeyRecord
 from app.schemas.user import UserCreateRequest
 from app.services import user_service
 from app.services.openviking.client import OpenVikingError
@@ -149,6 +151,10 @@ async def test_key_issue_failure_leaves_inactive_half_product(db, make_user, mak
     assert row.ov_user_id == "erin"
     assert row.ov_user_key_encrypted is None
     assert (await db.scalars(select(KeyRecord))).all() == []
+    fail_log = (await db.scalars(
+        select(AuditLog).where(AuditLog.action == "user.key.issue_failed")
+    )).one()
+    assert json.loads(fail_log.detail_json) == {"ov_user_id": "erin"}
 
 
 # ---------- 末位平台管理员（服务层直接构造：API 路径上自我保护先拦截） ----------

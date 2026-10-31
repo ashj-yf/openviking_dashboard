@@ -1,5 +1,4 @@
 """我的凭证：打码、显式暴露审计、自助重签。"""
-import pytest
 from sqlalchemy import select
 
 from app.core.crypto import decrypt_secret

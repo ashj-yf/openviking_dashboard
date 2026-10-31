@@ -37,12 +37,6 @@ class SyncUserInfo(BaseModel):
     ov_role: str | None = None
     username: str | None = None
 
-    def __getitem__(self, key: str) -> Any:
-        # 兼容 brief 读侧测试/调用方按字典键取数（u["ov_user_id"]）。
-        if key in type(self).model_fields:
-            return getattr(self, key)
-        raise KeyError(key)
-
 
 class TenantSyncReport(BaseModel):
     account_id: str

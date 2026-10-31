@@ -1,9 +1,6 @@
 """OpenViking user key 签发历史；只存 hint，不存明文。"""
-from datetime import datetime
-
 from sqlalchemy import (
     Boolean,
-    DateTime,
     ForeignKey,
     Index,
     String,

@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, Request, Response, status
 
 from app.core.deps import AdminUser, CurrentUser, DBSession, OVAdminDep
-from app.models import DashboardUser, Tenant
+from app.models import DashboardUser
 from app.schemas.user import (
     KeyRegenerateRequest,
     UserCreateRequest,

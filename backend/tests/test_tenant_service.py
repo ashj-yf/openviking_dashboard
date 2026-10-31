@@ -1,6 +1,4 @@
 """团队读侧与同步：本地聚合零 OV 调用、详情降级、差异校准。"""
-import pytest
-
 from app.services import tenant_service
 from app.services.openviking.client import OpenVikingError
 
@@ -98,7 +96,7 @@ async def test_sync_reports_differences_and_stamps_time(db, make_tenant, make_us
     assert report.ov_user_count == 2
     assert report.local_user_count == 1
     assert report.matched == 1
-    assert [u["ov_user_id"] for u in report.missing_local] == ["ghost"]
-    assert [u["ov_user_id"] for u in report.extra_local] == []
+    assert [u.ov_user_id for u in report.missing_local] == ["ghost"]
+    assert [u.ov_user_id for u in report.extra_local] == []
     await db.refresh(t)
     assert t.synced_at is not None

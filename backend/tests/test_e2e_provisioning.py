@@ -1,5 +1,4 @@
 """端到端：建团队 → 开通 → 登录改密 → 取凭证 → 自助重签 → 停用/启用 → 销户 → 删团队。"""
-import pytest
 
 
 async def test_full_provisioning_lifecycle(

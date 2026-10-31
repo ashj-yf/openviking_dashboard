@@ -293,7 +293,12 @@ async def rotate_user_key(
     db, admin_api, actor, target: DashboardUser, *, seed: str | None, ip,
     action: str = "user.key.regenerate",
 ) -> str:
-    """管理员/服务内部重签：OV 成功后覆盖密文、翻转 record、补救半成品激活。返回新明文。"""
+    """管理员/服务内部重签：OV 成功后覆盖密文、翻转 record。
+
+    仅激活"已注册但从未取到 key"的半成品（停用且 key 密文为空）；正常停用
+    账号重签不改变启用位——密钥卫生操作不得复活被停用的账号（USER-5）。
+    返回新明文。
+    """
     if target.tenant_id is None or not target.ov_user_id:
         raise HTTPException(status.HTTP_409_CONFLICT, "该账号没有 OpenViking 身份")
     tenant = target.tenant
@@ -306,10 +311,13 @@ async def rotate_user_key(
             502, "OpenViking 响应中未找到 key 字段",
             f"/api/v1/admin/accounts/{tenant.ov_account_id}/users/{target.ov_user_id}/key",
         )
+    # 仅补救"已注册但从未取到 key"的半成品（停用且无密文）；正常停用账号重签不改变启用位（USER-5）
+    # 判定必须先于 _store_fresh_key：该调用会把新密文写到同一属性上
+    if not target.ov_user_key_encrypted:
+        target.is_active = True
     await _store_fresh_key(
         db, target, new_key, seed_used=seed is not None, issued_by=actor.id if actor else None
     )
-    target.is_active = True  # 补救签发失败的半成品
     await db.commit()
     await audit_service.record(
         db, action, actor=actor, target_type="dashboard_user",
