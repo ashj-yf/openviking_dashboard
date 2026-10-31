@@ -1,20 +1,17 @@
-"""认证路由：登录、当前用户、改密、注销与管理员重置密码。"""
+"""认证路由：登录、当前用户、改密与注销。"""
 from fastapi import APIRouter, HTTPException, Request, Response, status
 
 from app.core.config import get_settings
-from app.core.deps import AdminUser, CurrentUser, DBSession
-from app.models import DashboardUser
+from app.core.deps import CurrentUser, DBSession
 from app.schemas.auth import (
     ChangePasswordRequest,
     LoginRequest,
     MeOut,
-    ResetPasswordRequest,
     TokenResponse,
 )
 from app.services import audit_service, auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-admin_users_router = APIRouter(prefix="/admin-users", tags=["admin-users"])
 
 
 def _client_ip(request: Request) -> str | None:
@@ -112,33 +109,6 @@ async def logout(
         db,
         "auth.logout",
         actor=current_user,
-        ip=_client_ip(request),
-    )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-@admin_users_router.post(
-    "/{user_id}/reset-password", status_code=status.HTTP_204_NO_CONTENT
-)
-async def admin_reset_password(
-    user_id: int,
-    payload: ResetPasswordRequest,
-    request: Request,
-    admin: AdminUser,
-    db: DBSession,
-) -> Response:
-    target = await db.get(DashboardUser, user_id)
-    if target is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在"
-        )
-    await auth_service.reset_password(db, target, payload.new_password)
-    await audit_service.record(
-        db,
-        "auth.password.reset",
-        actor=admin,
-        target_type="dashboard_user",
-        target_id=str(user_id),
         ip=_client_ip(request),
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -1,7 +1,7 @@
 """用户开通、列表与生命周期管理路由。"""
 import pytest
-# Task 5 追加：from app.core.crypto import decrypt_secret
-# Task 5 追加：from app.services.auth_service import authenticate
+from app.core.crypto import decrypt_secret
+from app.services.auth_service import authenticate
 # Task 6 追加：from sqlalchemy import select
 # Task 6 追加：from app.models import AuditLog, DashboardUser, KeyRecord
 
@@ -82,3 +82,148 @@ async def test_list_scoping_and_shape(
         "/api/v1/users", params={"tenant_id": t2.id}, headers=auth_headers(platform)
     )
     assert {u["username"] for u in r.json()} == {"b1"}
+
+
+# ---------- USER-3 角色 ----------
+async def test_set_role_happy_path(client, db, make_user, make_tenant, auth_headers, ov_calls):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    u = await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="alice",
+                         ov_role="user", ov_key="old-key-123")
+    ov_calls["responses"].append((200, {}))
+    r = await client.patch(
+        f"/api/v1/users/{u.id}/role", json={"role": "team_admin"},
+        headers=auth_headers(admin),
+    )
+    assert r.status_code == 200
+    await db.refresh(u)
+    assert u.role == "team_admin"
+    assert u.ov_role == "admin"
+    call = ov_calls["calls"][0]
+    assert call["path"] == "/api/v1/admin/accounts/acme/users/alice/role"
+    assert call["body"] == {"role": "admin"}
+
+
+async def test_set_role_guardrails(client, db, make_user, make_tenant, auth_headers, ov_calls):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    ta = await make_user("boss", "Passw0rd!", "team_admin", tenant=t, ov_user_id="boss")
+    other = await make_user("root2", "Admin#12345", "admin")
+    u = await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="alice")
+
+    # team_admin 无权改席位
+    assert (await client.patch(
+        f"/api/v1/users/{u.id}/role", json={"role": "team_admin"},
+        headers=auth_headers(ta))).status_code == 403
+    # 不能改自己
+    assert (await client.patch(
+        f"/api/v1/users/{admin.id}/role", json={"role": "user"},
+        headers=auth_headers(admin))).status_code == 400
+    # 平台账号无 OV 角色
+    assert (await client.patch(
+        f"/api/v1/users/{other.id}/role", json={"role": "team_admin"},
+        headers=auth_headers(admin))).status_code == 400
+    # 团队最后一个 team_admin 不可降级
+    assert (await client.patch(
+        f"/api/v1/users/{ta.id}/role", json={"role": "user"},
+        headers=auth_headers(admin))).status_code == 409
+    assert ov_calls["calls"] == []
+
+
+async def test_set_role_ov_failure_keeps_local(
+    client, db, make_user, make_tenant, auth_headers, ov_calls
+):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    u = await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="alice")
+    ov_calls["responses"].append((500, {"detail": "boom"}))
+    r = await client.patch(
+        f"/api/v1/users/{u.id}/role", json={"role": "team_admin"},
+        headers=auth_headers(admin),
+    )
+    assert r.status_code == 500
+    await db.refresh(u)
+    assert u.role == "user"
+    assert u.ov_role == "user"
+
+
+# ---------- USER-4 重置 + 联动重签 ----------
+async def test_reset_password_admin_for_platform_admin(client, db, make_user, auth_headers):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    other = await make_user("root2", "Admin#12345", "admin")
+    r = await client.post(
+        f"/api/v1/users/{other.id}/reset-password",
+        json={"new_password": "New#123456"},
+        headers=auth_headers(admin),
+    )
+    assert r.status_code == 204
+    assert await authenticate(db, "root2", "New#123456") is not None
+
+
+async def test_reset_password_with_key_rotation(
+    client, db, make_user, make_tenant, auth_headers, ov_calls
+):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    u = await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="alice",
+                         ov_key="old-key-1234567")
+    ov_calls["responses"].append((200, {"key": "new-key-76543210"}))
+    r = await client.post(
+        f"/api/v1/users/{u.id}/reset-password",
+        json={"new_password": "New#123456", "regenerate_key": True},
+        headers=auth_headers(admin),
+    )
+    assert r.status_code == 204
+    await db.refresh(u)
+    assert decrypt_secret(u.ov_user_key_encrypted) == "new-key-76543210"
+    assert ov_calls["calls"][0]["path"].endswith("/alice/key")
+
+
+async def test_team_admin_reset_scope(client, make_user, make_tenant, auth_headers):
+    t1 = await make_tenant("acme")
+    t2 = await make_tenant("beta")
+    ta = await make_user("boss", "Passw0rd!", "team_admin", tenant=t1, ov_user_id="boss")
+    u2 = await make_user("b1", "Passw0rd!", "user", tenant=t2, ov_user_id="b1")
+    r = await client.post(
+        f"/api/v1/users/{u2.id}/reset-password",
+        json={"new_password": "New#123456"},
+        headers=auth_headers(ta),
+    )
+    assert r.status_code == 403
+
+
+async def test_legacy_admin_users_route_removed(client, make_user, auth_headers):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    r = await client.post(
+        "/api/v1/admin-users/1/reset-password",
+        json={"new_password": "New#123456"},
+        headers=auth_headers(admin),
+    )
+    assert r.status_code == 404
+
+
+# ---------- USER-5 启停用 ----------
+async def test_disable_enable_lifecycle(client, db, make_user, auth_headers):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    other = await make_user("root2", "Admin#12345", "admin")
+    assert (await client.post(
+        f"/api/v1/users/{other.id}/disable", headers=auth_headers(admin))).status_code == 204
+    await db.refresh(other)
+    assert other.is_active is False
+    assert (await client.post(
+        f"/api/v1/users/{other.id}/enable", headers=auth_headers(admin))).status_code == 204
+    await db.refresh(other)
+    assert other.is_active is True
+
+
+async def test_disable_self_blocked(client, make_user, auth_headers):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    r = await client.post(f"/api/v1/users/{admin.id}/disable", headers=auth_headers(admin))
+    assert r.status_code == 400  # 不能对自己（自我保护先于末位管理员检查）
+
+
+async def test_team_admin_disable_scope(client, make_user, make_tenant, auth_headers):
+    t = await make_tenant("acme")
+    ta = await make_user("boss", "Passw0rd!", "team_admin", tenant=t, ov_user_id="boss")
+    r = await client.post(f"/api/v1/users/{ta.id}/disable", headers=auth_headers(ta))
+    assert r.status_code == 403

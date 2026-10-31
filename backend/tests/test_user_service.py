@@ -149,3 +149,12 @@ async def test_key_issue_failure_leaves_inactive_half_product(db, make_user, mak
     assert row.ov_user_id == "erin"
     assert row.ov_user_key_encrypted is None
     assert (await db.scalars(select(KeyRecord))).all() == []
+
+
+# ---------- 末位平台管理员（服务层直接构造：API 路径上自我保护先拦截） ----------
+async def test_cannot_disable_last_active_platform_admin(db, make_user):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    inactive = await make_user("root2", "Admin#12345", "admin", is_active=False)
+    with pytest.raises(HTTPException) as e:
+        await user_service.set_enabled(db, inactive, admin, False, ip=None)
+    assert e.value.status_code == 409

@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api.v1.auth import admin_users_router, router as auth_router
+from app.api.v1.auth import router as auth_router
 from app.api.v1.tenants import router as tenants_router
 from app.api.v1.users import router as users_router
 from app.core.config import ConfigError, get_settings, validate_settings
@@ -85,7 +85,6 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=200 if body.db else 503, content=body.model_dump())
 
     app.include_router(auth_router, prefix="/api/v1")
-    app.include_router(admin_users_router, prefix="/api/v1")
     app.include_router(tenants_router, prefix="/api/v1")
     app.include_router(users_router, prefix="/api/v1")
 

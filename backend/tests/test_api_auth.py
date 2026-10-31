@@ -1,18 +1,7 @@
-import pytest_asyncio
-
-
 async def _login(client, username, password):
     return await client.post(
         "/api/v1/auth/login", json={"username": username, "password": password}
     )
-
-
-@pytest_asyncio.fixture
-async def admin_headers(client, make_user):
-    user = await make_user(username="admin", password="Admin#12345", role="admin")
-    resp = await _login(client, "admin", "Admin#12345")
-    assert resp.status_code == 200
-    return {"Authorization": f"Bearer {resp.json()['access_token']}"}, user
 
 
 async def test_login_success_and_same_error_for_bad_credentials(client, make_user, db):
@@ -47,33 +36,6 @@ async def test_me_requires_token_and_never_leaks_key(client, make_user, db):
     data = me.json()
     assert data["has_ov_key"] is True and data["account_id"] == "acme"
     assert "ov_user_key_encrypted" not in data
-
-
-async def test_non_admin_cannot_reset_password(client, make_user):
-    await make_user(username="carol", password="Admin#12345", role="user")
-    token = (await _login(client, "carol", "Admin#12345")).json()["access_token"]
-    target = await make_user(username="dave", password="Admin#12345", role="user")
-    resp = await client.post(
-        f"/api/v1/admin-users/{target.id}/reset-password",
-        json={"new_password": "Reset#2026xx"},
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert resp.status_code == 403
-
-
-async def test_admin_reset_password_then_new_password_works(client, admin_headers, make_user):
-    headers, admin = admin_headers
-    target = await make_user(username="erin", password="OldPass#2026", role="user")
-    resp = await client.post(
-        f"/api/v1/admin-users/{target.id}/reset-password",
-        json={"new_password": "Reset#2026xx"},
-        headers=headers,
-    )
-    assert resp.status_code == 204
-    assert (await _login(client, "erin", "OldPass#2026")).status_code == 401
-    assert (await _login(client, "erin", "Reset#2026xx")).status_code == 200
-    assert (await client.post(f"/api/v1/admin-users/{99999}/reset-password",
-            json={"new_password": "Reset#2026xx"}, headers=headers)).status_code == 404
 
 
 async def test_change_password_flow_and_must_change_unlock(client, make_user):

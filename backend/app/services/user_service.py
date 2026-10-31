@@ -204,3 +204,110 @@ async def _store_fresh_key(
         issued_by=issued_by,
     ))
     await db.flush()
+
+
+async def _last_active_platform_admin(db: AsyncSession, exclude_id: int | None = None) -> bool:
+    stmt = select(func.count()).select_from(DashboardUser).where(
+        DashboardUser.role == "admin", DashboardUser.is_active.is_(True)
+    )
+    if exclude_id is not None:
+        stmt = stmt.where(DashboardUser.id != exclude_id)
+    return (await db.scalar(stmt) or 0) == 0
+
+
+async def _count_team_admins(db: AsyncSession, tenant_id: int) -> int:
+    return await db.scalar(
+        select(func.count()).select_from(DashboardUser).where(
+            DashboardUser.tenant_id == tenant_id,
+            DashboardUser.role == "team_admin",
+        )
+    ) or 0
+
+
+async def set_role(db, admin_api, actor, target: DashboardUser, new_role: str, *, ip):
+    if actor.id == target.id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "不能对自己执行角色变更")
+    if target.tenant_id is None or target.ov_user_id is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "平台管理员没有 OpenViking 角色")
+    if target.role == new_role:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "角色未变更")
+    if target.role == "team_admin" and new_role == "user":
+        if await _count_team_admins(db, target.tenant_id) <= 1:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT, "团队最后一个团队管理员不可降级"
+            )
+    tenant = target.tenant
+    # 先 OV，失败由全局处理器透传、本地不变
+    await admin_api.set_role(
+        tenant.ov_account_id, target.ov_user_id, OV_ROLE_BY_DASHBOARD[new_role]
+    )
+    target.role = new_role
+    target.ov_role = OV_ROLE_BY_DASHBOARD[new_role]
+    await db.commit()
+    await audit_service.record(
+        db, "user.role.change", actor=actor, target_type="dashboard_user",
+        target_id=str(target.id), detail={"role": new_role}, ip=ip,
+    )
+
+
+async def reset_target_password(
+    db, admin_api, actor, target: DashboardUser, new_password: str, *,
+    regenerate: bool, seed: str | None, ip,
+):
+    if regenerate:
+        if target.tenant_id is None or target.ov_user_id is None:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, "该账号没有 OpenViking key，无法联动重签"
+            )
+        await rotate_user_key(db, admin_api, actor, target, seed=seed, ip=ip)
+    target.password_hash = hash_password(new_password)
+    await db.commit()
+    await audit_service.record(
+        db, "user.password.reset", actor=actor, target_type="dashboard_user",
+        target_id=str(target.id), detail={"regenerate_key": regenerate}, ip=ip,
+    )
+
+
+async def set_enabled(db, actor, target: DashboardUser, active: bool, *, ip):
+    if actor.id == target.id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "不能对自己执行该操作")
+    if not active and target.role == "admin":
+        if await _last_active_platform_admin(db, exclude_id=target.id):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT, "最后一个平台管理员不可禁用"
+            )
+    target.is_active = active
+    await db.commit()
+    await audit_service.record(
+        db, "user.enable" if active else "user.disable", actor=actor,
+        target_type="dashboard_user", target_id=str(target.id), ip=ip,
+    )
+
+
+async def rotate_user_key(
+    db, admin_api, actor, target: DashboardUser, *, seed: str | None, ip,
+    action: str = "user.key.regenerate",
+) -> str:
+    """管理员/服务内部重签：OV 成功后覆盖密文、翻转 record、补救半成品激活。返回新明文。"""
+    if target.tenant_id is None or not target.ov_user_id:
+        raise HTTPException(status.HTTP_409_CONFLICT, "该账号没有 OpenViking 身份")
+    tenant = target.tenant
+    resp = await admin_api.regenerate_key(
+        tenant.ov_account_id, target.ov_user_id, seed=seed
+    )  # OpenVikingError 直接透传，本地不动
+    new_key = extract_user_key(resp)
+    if not new_key:
+        raise OpenVikingError(
+            502, "OpenViking 响应中未找到 key 字段",
+            f"/api/v1/admin/accounts/{tenant.ov_account_id}/users/{target.ov_user_id}/key",
+        )
+    await _store_fresh_key(
+        db, target, new_key, seed_used=seed is not None, issued_by=actor.id if actor else None
+    )
+    target.is_active = True  # 补救签发失败的半成品
+    await db.commit()
+    await audit_service.record(
+        db, action, actor=actor, target_type="dashboard_user",
+        target_id=str(target.id), detail={"seed_used": seed is not None}, ip=ip,
+    )
+    return new_key

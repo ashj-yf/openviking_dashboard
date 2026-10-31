@@ -1,9 +1,14 @@
 """用户管理路由：平台 admin 全权，team_admin 限本团队普通成员。"""
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 
-from app.core.deps import CurrentUser, DBSession, OVAdminDep
+from app.core.deps import AdminUser, CurrentUser, DBSession, OVAdminDep
 from app.models import DashboardUser, Tenant
-from app.schemas.user import UserCreateRequest, UserOut
+from app.schemas.user import (
+    UserCreateRequest,
+    UserOut,
+    UserResetPasswordRequest,
+    UserRoleRequest,
+)
 from app.services import user_service
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -58,3 +63,51 @@ async def create_user(
     ip = request.client.host if request.client else None
     user = await user_service.create_user(db, ov, actor, payload, ip=ip)
     return _to_out(user)
+
+
+@router.patch("/{user_id}/role", response_model=UserOut)
+async def set_user_role(
+    user_id: int, payload: UserRoleRequest, request: Request,
+    db: DBSession, ov: OVAdminDep, admin: AdminUser,
+):
+    target = await user_service.get_target_or_404(db, user_id)
+    ip = request.client.host if request.client else None
+    await user_service.set_role(db, ov, admin, target, payload.role, ip=ip)
+    return _to_out(target)
+
+
+@router.post("/{user_id}/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+async def reset_user_password(
+    user_id: int, payload: UserResetPasswordRequest, request: Request,
+    db: DBSession, ov: OVAdminDep, current: CurrentUser,
+):
+    actor = await _manager(current)
+    target = await user_service.get_target_or_404(db, user_id)
+    if actor.role != "admin":
+        await user_service.assert_can_manage(actor, target)
+    ip = request.client.host if request.client else None
+    await user_service.reset_target_password(
+        db, ov, actor, target, payload.new_password,
+        regenerate=payload.regenerate_key, seed=payload.seed, ip=ip,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{user_id}/disable", status_code=status.HTTP_204_NO_CONTENT)
+async def disable_user(user_id: int, request: Request, db: DBSession, current: CurrentUser):
+    actor = await _manager(current)
+    target = await user_service.get_target_or_404(db, user_id)
+    await user_service.assert_can_manage(actor, target)
+    ip = request.client.host if request.client else None
+    await user_service.set_enabled(db, actor, target, False, ip=ip)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{user_id}/enable", status_code=status.HTTP_204_NO_CONTENT)
+async def enable_user(user_id: int, request: Request, db: DBSession, current: CurrentUser):
+    actor = await _manager(current)
+    target = await user_service.get_target_or_404(db, user_id)
+    await user_service.assert_can_manage(actor, target)
+    ip = request.client.host if request.client else None
+    await user_service.set_enabled(db, actor, target, True, ip=ip)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

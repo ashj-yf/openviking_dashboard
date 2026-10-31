@@ -51,12 +51,6 @@ async def test_change_password_rules(db):
     assert await auth_service.authenticate(db, "u1", "NewPass#2026") is not None
 
 
-async def test_reset_password_does_not_need_old(db):
-    user = await _make_user(db, username="boss", role="admin", password="OldPass#2026")
-    await auth_service.reset_password(db, user, "Reset#2026xx")
-    assert await auth_service.authenticate(db, "boss", "Reset#2026xx") is not None
-
-
 async def test_ensure_first_admin_idempotent(db):
     settings = get_settings()
     await auth_service.ensure_first_admin(db, settings)

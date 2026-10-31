@@ -1,4 +1,4 @@
-"""认证领域服务：登录校验、令牌签发、改密/重置密码与首个管理员引导。"""
+"""认证领域服务：登录校验、令牌签发、改密与首个管理员引导。"""
 from datetime import datetime, timezone
 
 from sqlalchemy import func, select
@@ -52,14 +52,6 @@ async def change_password(
         raise ValueError("新密码不能与旧密码相同")
     user.password_hash = hash_password(new_password)
     user.must_change_password = False
-    await db.commit()
-
-
-async def reset_password(
-    db: AsyncSession, target: DashboardUser, new_password: str
-) -> None:
-    """管理员重置密码：不校验旧密码，直接覆盖哈希。"""
-    target.password_hash = hash_password(new_password)
     await db.commit()
 
 

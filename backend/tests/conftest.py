@@ -23,6 +23,7 @@ os.environ.update(
 import httpx
 import pytest
 import pytest_asyncio
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -52,6 +53,21 @@ async def engine(tmp_path):
 async def db(engine) -> AsyncGenerator[AsyncSession, None]:
     factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with factory() as session:
+        # 夹具会话与 API 请求会话（见 app 夹具）是不同会话；SELECT 一律
+        # populate_existing，避免身份映射中的夹具旧副本掩盖 API 侧已提交的变更。
+        @event.listens_for(session.sync_session, "do_orm_execute")
+        def _populate_existing(orm_execute_state) -> None:
+            if (
+                orm_execute_state.is_select
+                and not orm_execute_state.is_column_load
+                and not orm_execute_state.is_relationship_load
+            ):
+                orm_execute_state.statement = (
+                    orm_execute_state.statement.execution_options(
+                        populate_existing=True
+                    )
+                )
+
         yield session
 
 
@@ -96,6 +112,10 @@ async def make_user(db):
                 db.add(t)
                 await db.flush()
                 tenant_id = t.id
+        # 未显式给出时按看板角色推导 OV 角色；平台 admin 无 OV 角色（None）
+        kwargs.setdefault(
+            "ov_role", {"team_admin": "admin", "user": "user"}.get(role)
+        )
         user = DashboardUser(
             username=username,
             password_hash=hash_password(password),
