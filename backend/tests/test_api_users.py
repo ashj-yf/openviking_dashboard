@@ -1,9 +1,10 @@
 """用户开通、列表与生命周期管理路由。"""
 import pytest
+from sqlalchemy import select
+
 from app.core.crypto import decrypt_secret
+from app.models import AuditLog, DashboardUser, KeyRecord
 from app.services.auth_service import authenticate
-# Task 6 追加：from sqlalchemy import select
-# Task 6 追加：from app.models import AuditLog, DashboardUser, KeyRecord
 
 
 async def test_create_user_api_and_no_key_in_response(
@@ -227,3 +228,153 @@ async def test_team_admin_disable_scope(client, make_user, make_tenant, auth_hea
     ta = await make_user("boss", "Passw0rd!", "team_admin", tenant=t, ov_user_id="boss")
     r = await client.post(f"/api/v1/users/{ta.id}/disable", headers=auth_headers(ta))
     assert r.status_code == 403
+
+
+# ---------- 管理员重签 / 半成品补救 ----------
+async def test_admin_regenerate_rotates_key_and_records(
+    client, db, make_user, make_tenant, auth_headers, ov_calls
+):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    u = await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="alice",
+                         ov_key="old-key-1234567")
+    db.add(KeyRecord(tenant_id=t.id, dashboard_user_id=u.id, ov_user_id="alice",
+                     key_kind="user", key_hint="old-key-"))
+    await db.commit()
+    ov_calls["responses"].append((200, {"api_key": "new-key-76543210"}))
+    r = await client.post(
+        f"/api/v1/users/{u.id}/regenerate-key", json={}, headers=auth_headers(admin)
+    )
+    assert r.status_code == 200
+    await db.refresh(u)
+    assert decrypt_secret(u.ov_user_key_encrypted) == "new-key-76543210"
+    recs = (await db.scalars(select(KeyRecord).order_by(KeyRecord.id))).all()
+    assert [x.is_current for x in recs] == [False, True]
+    assert recs[-1].key_hint == "new-key-"[:8]
+
+
+async def test_regenerate_revives_half_product(
+    client, db, make_user, make_tenant, auth_headers, ov_calls
+):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    u = await make_user("erin", "Passw0rd!", "user", tenant=t, ov_user_id="erin",
+                         is_active=False)  # Task 4 半成品
+    ov_calls["responses"].append((200, {"key": "revive-key-12345"}))
+    r = await client.post(
+        f"/api/v1/users/{u.id}/regenerate-key", json={}, headers=auth_headers(admin)
+    )
+    assert r.status_code == 200
+    await db.refresh(u)
+    assert u.is_active is True
+    assert u.ov_user_key_encrypted is not None
+
+
+async def test_regenerate_ov_failure_keeps_old_key(
+    client, db, make_user, make_tenant, auth_headers, ov_calls
+):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    u = await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="alice",
+                         ov_key="old-key-1234567")
+    ov_calls["responses"].append((500, {"detail": "boom"}))
+    r = await client.post(
+        f"/api/v1/users/{u.id}/regenerate-key", json={}, headers=auth_headers(admin)
+    )
+    assert r.status_code == 500
+    await db.refresh(u)
+    assert decrypt_secret(u.ov_user_key_encrypted) == "old-key-1234567"
+
+
+# ---------- USER-6 销户 ----------
+async def test_delete_user_hard_deletes_with_audit(
+    client, db, make_user, make_tenant, auth_headers, ov_calls
+):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    u = await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="alice",
+                         ov_key="k-12345678")
+    db.add(KeyRecord(tenant_id=t.id, dashboard_user_id=u.id, ov_user_id="alice",
+                     key_kind="user", key_hint="k-123456"))
+    db.add(AuditLog(actor_user_id=u.id, actor_name="alice", action="key.view"))
+    await db.commit()
+    ov_calls["responses"].append((200, {}))
+    r = await client.delete(f"/api/v1/users/{u.id}", headers=auth_headers(admin))
+    assert r.status_code == 204
+    assert (await db.scalars(select(KeyRecord))).all() == []
+    log = (await db.scalars(select(AuditLog).where(AuditLog.action == "key.view"))).one()
+    assert log.actor_user_id is None and log.actor_name == "alice"
+    actions = [a.action for a in (await db.scalars(select(AuditLog))).all()]
+    assert "user.delete" in actions
+
+
+async def test_delete_guardrails(client, make_user, make_tenant, auth_headers, ov_calls):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")  # admin_user_id 默认 "boss"
+    initial = await make_user("bosslogin", "Passw0rd!", "team_admin",
+                               tenant=t, ov_user_id="boss")
+    plain = await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="alice")
+    platform = await make_user("root2", "Admin#12345", "admin")
+
+    def delete(uid, actor):
+        return client.delete(f"/api/v1/users/{uid}", headers=auth_headers(actor))
+
+    assert (await delete(admin.id, admin)).status_code == 400      # 不能删自己
+    assert (await delete(platform.id, admin)).status_code == 403   # 平台管理员账号
+    assert (await delete(initial.id, admin)).status_code == 409    # 账户初始管理员
+
+    # 团队最后一个 team_admin：该团队本地仅此一个 team_admin，且其 ov_user_id 非账户初始管理员
+    t2 = await make_tenant("gamma")
+    solo = await make_user("soloboss", "Passw0rd!", "team_admin",
+                            tenant=t2, ov_user_id="soloboss")
+    assert (await delete(solo.id, admin)).status_code == 409
+
+    # team_admin 跨团队删人
+    t3 = await make_tenant("beta")
+    outsider = await make_user("b1", "Passw0rd!", "user", tenant=t3, ov_user_id="b1")
+    assert (await delete(outsider.id, initial)).status_code == 403
+    assert ov_calls["calls"] == []
+
+    # team_admin 删本团队普通成员成功（默认 mock 200）
+    assert (await delete(plain.id, initial)).status_code == 204
+
+
+async def test_delete_ov_refused_local_untouched(
+    client, db, make_user, make_tenant, auth_headers, ov_calls
+):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    u = await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="alice")
+    ov_calls["responses"].append((400, {"detail": "last admin"}))
+    r = await client.delete(f"/api/v1/users/{u.id}", headers=auth_headers(admin))
+    assert r.status_code == 400
+    assert await db.get(DashboardUser, u.id) is not None
+    assert any(a.action == "user.delete.fail"
+               for a in (await db.scalars(select(AuditLog))).all())
+
+
+# ---------- USER-7 同步 ----------
+async def test_sync_user_report(client, make_user, make_tenant, auth_headers, ov_calls):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    u = await make_user("alice", "Passw0rd!", "user", tenant=t,
+                         ov_user_id="alice", ov_role="user")
+    ov_calls["responses"].append((200, {"users": [{"user_id": "alice", "role": "admin"}]}))
+    r = await client.post(f"/api/v1/users/{u.id}/sync", headers=auth_headers(admin))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ov_exists"] is True
+    assert body["consistent"] is False
+    assert body["ov_role"] == "admin" and body["local_ov_role"] == "user"
+
+
+async def test_sync_user_missing_remote(client, make_user, make_tenant, auth_headers, ov_calls):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    u = await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="alice")
+    ov_calls["responses"].append((200, {"users": []}))
+    r = await client.post(f"/api/v1/users/{u.id}/sync", headers=auth_headers(admin))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ov_exists"] is False
+    assert body["consistent"] is False

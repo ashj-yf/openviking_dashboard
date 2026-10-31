@@ -4,10 +4,12 @@ from fastapi import APIRouter, HTTPException, Request, Response, status
 from app.core.deps import AdminUser, CurrentUser, DBSession, OVAdminDep
 from app.models import DashboardUser, Tenant
 from app.schemas.user import (
+    KeyRegenerateRequest,
     UserCreateRequest,
     UserOut,
     UserResetPasswordRequest,
     UserRoleRequest,
+    UserSyncReport,
 )
 from app.services import user_service
 
@@ -111,3 +113,36 @@ async def enable_user(user_id: int, request: Request, db: DBSession, current: Cu
     ip = request.client.host if request.client else None
     await user_service.set_enabled(db, actor, target, True, ip=ip)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{user_id}/regenerate-key", response_model=UserOut)
+async def regenerate_user_key(
+    user_id: int, payload: KeyRegenerateRequest, request: Request,
+    db: DBSession, ov: OVAdminDep, current: CurrentUser,
+):
+    actor = await _manager(current)
+    target = await user_service.get_target_or_404(db, user_id)
+    await user_service.assert_can_manage(actor, target)
+    ip = request.client.host if request.client else None
+    await user_service.rotate_user_key(db, ov, actor, target, seed=payload.seed, ip=ip)
+    return _to_out(target)
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(
+    user_id: int, request: Request, db: DBSession, ov: OVAdminDep, current: CurrentUser
+):
+    actor = await _manager(current)
+    target = await user_service.get_target_or_404(db, user_id)
+    await user_service.assert_can_manage(actor, target)
+    ip = request.client.host if request.client else None
+    await user_service.delete_user(db, ov, actor, target, ip=ip)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{user_id}/sync", response_model=UserSyncReport)
+async def sync_user(user_id: int, db: DBSession, ov: OVAdminDep, current: CurrentUser):
+    actor = await _manager(current)
+    target = await user_service.get_target_or_404(db, user_id)
+    await user_service.assert_can_manage(actor, target)
+    return await user_service.sync_user(db, ov, target)

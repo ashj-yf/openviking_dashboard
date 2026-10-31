@@ -43,3 +43,16 @@ class UserResetPasswordRequest(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
     regenerate_key: bool = False
     seed: str | None = Field(default=None, min_length=1, max_length=256)
+
+
+class KeyRegenerateRequest(BaseModel):
+    seed: str | None = Field(default=None, min_length=1, max_length=256)
+
+
+class UserSyncReport(BaseModel):
+    account_id: str
+    ov_user_id: str
+    ov_exists: bool
+    local_ov_role: str | None = None
+    ov_role: str | None = None
+    consistent: bool

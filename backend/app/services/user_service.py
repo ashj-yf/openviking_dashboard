@@ -10,10 +10,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.crypto import encrypt_secret
 from app.core.security import hash_password
 from app.models import DashboardUser, KeyRecord, Tenant
-from app.schemas.user import UserCreateRequest
+from app.schemas.user import UserCreateRequest, UserSyncReport
 from app.services import audit_service
 from app.services.openviking.client import OpenVikingError
-from app.services.openviking.payloads import extract_user_key
+from app.services.openviking.payloads import (
+    extract_remote_role,
+    extract_remote_user_id,
+    extract_user_key,
+    extract_users_list,
+)
 
 logger = logging.getLogger("app.user")
 
@@ -311,3 +316,59 @@ async def rotate_user_key(
         target_id=str(target.id), detail={"seed_used": seed is not None}, ip=ip,
     )
     return new_key
+
+
+async def delete_user(db, admin_api, actor, target: DashboardUser, *, ip):
+    if actor.id == target.id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "不能删除自己")
+    if target.tenant_id is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "平台管理员账号不支持销户")
+    tenant = target.tenant
+    if target.ov_user_id == tenant.admin_user_id:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "账户初始管理员不可删除"
+        )
+    if target.role == "team_admin" and await _count_team_admins(db, target.tenant_id) <= 1:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "团队最后一个团队管理员不可删除"
+        )
+    try:
+        await admin_api.delete_user(tenant.ov_account_id, target.ov_user_id)
+    except OpenVikingError:
+        await audit_service.record(
+            db, "user.delete.fail", actor=actor, target_type="dashboard_user",
+            target_id=str(target.id),
+            detail={"tenant": tenant.ov_account_id, "ov_user_id": target.ov_user_id},
+            ip=ip,
+        )
+        raise
+    await audit_service.record(
+        db, "user.delete", actor=actor, target_type="dashboard_user",
+        target_id=str(target.id),
+        detail={"tenant": tenant.ov_account_id, "ov_user_id": target.ov_user_id,
+                "username": target.username},
+        ip=ip,
+    )
+    await db.delete(target)
+    await db.commit()
+
+
+async def sync_user(db, admin_api, target: DashboardUser):
+    if target.tenant_id is None or not target.ov_user_id:
+        raise HTTPException(status.HTTP_409_CONFLICT, "该账号没有 OpenViking 身份")
+    tenant = target.tenant
+    payload = await admin_api.list_users(tenant.ov_account_id)
+    remote: dict[str, str | None] = {}
+    for u in extract_users_list(payload):
+        uid = extract_remote_user_id(u)
+        if uid:
+            remote[uid] = extract_remote_role(u)
+    ov_role = remote.get(target.ov_user_id)
+    return UserSyncReport(
+        account_id=tenant.ov_account_id,
+        ov_user_id=target.ov_user_id,
+        ov_exists=target.ov_user_id in remote,
+        local_ov_role=target.ov_role,
+        ov_role=ov_role,
+        consistent=ov_role is not None and ov_role == target.ov_role,
+    )
