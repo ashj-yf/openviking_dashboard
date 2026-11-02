@@ -12,6 +12,7 @@ import { ChangePasswordPage } from "@/pages/ChangePasswordPage";
 import { ForbiddenPage } from "@/pages/errors/ForbiddenPage";
 import { NotFoundPage } from "@/pages/errors/NotFoundPage";
 import { LoginPage } from "@/pages/LoginPage";
+import { TenantDetailPage } from "@/pages/tenants/TenantDetailPage";
 import { TenantListPage } from "@/pages/tenants/TenantListPage";
 import { getToken } from "@/auth/token-store";
 
@@ -104,6 +105,14 @@ export function AppRoutes() {
                   element={
                     <RequireRole allow="admin">
                       <TenantListPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/tenants/:id"
+                  element={
+                    <RequireRole allow="admin">
+                      <TenantDetailPage />
                     </RequireRole>
                   }
                 />

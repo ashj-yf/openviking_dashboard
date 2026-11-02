@@ -2,6 +2,7 @@ import { http, HttpResponse, type HttpHandler } from "msw";
 import type { Schema } from "@/types/api";
 
 type TenantListItem = Schema["TenantListItem"];
+type TenantDetail = Schema["TenantDetailOut"];
 type TenantCreated = Schema["TenantCreatedOut"];
 type TenantSyncReport = Schema["TenantSyncReport"];
 
@@ -41,6 +42,17 @@ export function makeSyncReport(overrides: Partial<TenantSyncReport> = {}): Tenan
   };
 }
 
+export function makeTenantDetail(overrides: Partial<TenantDetail> = {}): TenantDetail {
+  return {
+    ...makeTenant(),
+    ov_account: { account_id: "acme", users_count: 3, status: "active" },
+    configuration: { memory: { enabled: true }, version: 9 },
+    settings: { theme: "default" },
+    ov_error: null,
+    ...overrides,
+  };
+}
+
 let rows: TenantListItem[] = [];
 let createError: { status: number; body: unknown } | null = null;
 let createdPayload: TenantCreated = {
@@ -52,6 +64,7 @@ let createdPayload: TenantCreated = {
   key_provisioned: true,
 };
 let syncReport: TenantSyncReport = makeSyncReport();
+let detailById: Record<number, TenantDetail> = { 1: makeTenantDetail() };
 
 export interface CapturedRequest {
   method: string;
@@ -73,6 +86,7 @@ export function resetTenantsMock(list: TenantListItem[] | null = [makeTenant()])
     key_provisioned: true,
   };
   syncReport = makeSyncReport();
+  detailById = { 1: makeTenantDetail() };
 }
 
 export function setCreateError(status: number, body: unknown): void {
@@ -91,8 +105,14 @@ export function getTenantRequests(method?: string): CapturedRequest[] {
   return method ? captured.filter((r) => r.method === method) : [...captured];
 }
 
+export function setTenantDetail(id: number, detail: TenantDetail | null): void {
+  if (detail === null) delete detailById[id];
+  else detailById[id] = detail;
+}
+
 export const tenantListHandlers: HttpHandler[] = [
   http.get("*/api/v1/tenants", ({ request }) => {
+    // R7：保留 GET list 捕获，T4 搜索防抖用例依赖 getTenantRequests("GET")。
     captured.push({ method: "GET", url: request.url, body: null });
     const q = new URL(request.url).searchParams.get("q")?.toLowerCase() ?? "";
     const filtered = q
@@ -112,11 +132,29 @@ export const tenantListHandlers: HttpHandler[] = [
       return HttpResponse.json(createError.body as JsonValue, { status: createError.status });
     return HttpResponse.json(createdPayload, { status: 201 });
   }),
+  http.get("*/api/v1/tenants/:id", ({ params }) => {
+    const detail = detailById[Number(params.id)];
+    return detail
+      ? HttpResponse.json(detail)
+      : HttpResponse.json({ detail: "团队不存在" }, { status: 404 });
+  }),
+  http.patch("*/api/v1/tenants/:id", async ({ params, request }) => {
+    const id = Number(params.id);
+    const body = (await request.json()) as Record<string, unknown>;
+    captured.push({ method: "PATCH", url: request.url, body });
+    const current = detailById[id];
+    if (!current) return HttpResponse.json({ detail: "团队不存在" }, { status: 404 });
+    const patched: TenantDetail = { ...current, ...body };
+    detailById[id] = patched;
+    rows = rows.map((t) => (t.id === id ? { ...t, ...body } : t));
+    return HttpResponse.json(patched);
+  }),
   http.delete("*/api/v1/tenants/:id", async ({ request, params }) => {
     const body = (await request.json()) as unknown;
     captured.push({ method: "DELETE", url: request.url, body });
     const id = Number(params.id);
     rows = rows.filter((t) => t.id !== id);
+    delete detailById[id];
     return new HttpResponse(null, { status: 204 });
   }),
   http.post("*/api/v1/tenants/:id/sync", ({ request }) => {
