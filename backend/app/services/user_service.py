@@ -7,6 +7,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings, is_env_admin
 from app.core.crypto import encrypt_secret
 from app.core.security import hash_password
 from app.models import DashboardUser, KeyRecord, Tenant
@@ -28,6 +29,7 @@ OV_ROLE_BY_DASHBOARD = {"team_admin": "admin", "user": "user"}
 async def assert_can_manage(actor: DashboardUser, target: DashboardUser) -> None:
     """team_admin 仅能管理本团队普通成员；平台 admin 放行；其余 403。"""
     if actor.role == "admin":
+        assert_not_env_admin(target)
         return
     if actor.role == "team_admin":
         if target.tenant_id != actor.tenant_id:
@@ -38,6 +40,19 @@ async def assert_can_manage(actor: DashboardUser, target: DashboardUser) -> None
             )
         return
     raise HTTPException(status.HTTP_403_FORBIDDEN, "无用户管理权限")
+
+
+def assert_not_env_admin(target: DashboardUser) -> None:
+    """超管账号受环境配置保护：UI 一切修改入口拒绝（01 AUTH-3）。
+
+    该断言针对 target 的用户名判定，与操作者无关——任何人（含其他 admin）
+    都不能在界面修改超管账号。
+    """
+    if is_env_admin(get_settings(), target.username):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "超管账号受环境配置保护，无法在界面修改",
+        )
 
 
 async def get_target_or_404(db: AsyncSession, user_id: int) -> DashboardUser:
@@ -86,6 +101,12 @@ async def create_user(
     *,
     ip: str | None,
 ) -> DashboardUser:
+    # 超管用户名保留给 env 同步，不可经用户管理创建同名账号（防冒充/混淆）
+    if is_env_admin(get_settings(), payload.username):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "该用户名为环境配置的超管账号，不可重复创建",
+        )
     # 角色与归属决策
     if actor.role == "team_admin":
         if payload.role != "user":
@@ -230,6 +251,7 @@ async def _count_team_admins(db: AsyncSession, tenant_id: int) -> int:
 
 
 async def set_role(db, admin_api, actor, target: DashboardUser, new_role: str, *, ip):
+    assert_not_env_admin(target)
     if actor.id == target.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "不能对自己执行角色变更")
     if target.tenant_id is None or target.ov_user_id is None:
@@ -259,6 +281,7 @@ async def reset_target_password(
     db, admin_api, actor, target: DashboardUser, new_password: str, *,
     regenerate: bool, seed: str | None, ip,
 ):
+    assert_not_env_admin(target)
     if regenerate:
         if target.tenant_id is None or target.ov_user_id is None:
             raise HTTPException(
@@ -274,6 +297,7 @@ async def reset_target_password(
 
 
 async def set_enabled(db, actor, target: DashboardUser, active: bool, *, ip):
+    assert_not_env_admin(target)
     if actor.id == target.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "不能对自己执行该操作")
     if not active and target.role == "admin":
@@ -299,6 +323,7 @@ async def rotate_user_key(
     账号重签不改变启用位——密钥卫生操作不得复活被停用的账号（USER-5）。
     返回新明文。
     """
+    assert_not_env_admin(target)
     if target.tenant_id is None or not target.ov_user_id:
         raise HTTPException(status.HTTP_409_CONFLICT, "该账号没有 OpenViking 身份")
     tenant = target.tenant
@@ -327,6 +352,7 @@ async def rotate_user_key(
 
 
 async def delete_user(db, admin_api, actor, target: DashboardUser, *, ip):
+    assert_not_env_admin(target)
     if actor.id == target.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "不能删除自己")
     if target.tenant_id is None:
@@ -362,6 +388,7 @@ async def delete_user(db, admin_api, actor, target: DashboardUser, *, ip):
 
 
 async def sync_user(db, admin_api, target: DashboardUser):
+    assert_not_env_admin(target)
     if target.tenant_id is None or not target.ov_user_id:
         raise HTTPException(status.HTTP_409_CONFLICT, "该账号没有 OpenViking 身份")
     tenant = target.tenant

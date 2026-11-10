@@ -490,3 +490,61 @@ async def test_sync_consistent_when_remote_role_matches(
     body = r.json()
     assert body["ov_exists"] is True
     assert body["consistent"] is True
+
+
+# ---------------------------------------------------------------------------
+# 超管账号 UI 保护（01 AUTH-3：env 同步的超管在界面中不可修改）
+# ---------------------------------------------------------------------------
+
+
+async def _make_env_admin(make_user):
+    from app.core.config import get_settings
+    return await make_user(
+        get_settings().first_admin_username, "Admin#12345", "admin"
+    )
+
+
+async def test_env_admin_protected_from_all_user_management(
+    client, make_user, auth_headers
+):
+    chief = await make_user("chief", "Admin#12345", "admin")
+    env_admin = await _make_env_admin(make_user)
+    headers = auth_headers(chief)
+    uid = env_admin.id
+    role = await client.patch(f"/api/v1/users/{uid}/role",
+                              json={"role": "user"}, headers=headers)
+    reset = await client.post(f"/api/v1/users/{uid}/reset-password",
+                              json={"new_password": "NewPass#2026"}, headers=headers)
+    disable = await client.post(f"/api/v1/users/{uid}/disable", headers=headers)
+    enable = await client.post(f"/api/v1/users/{uid}/enable", headers=headers)
+    rotate = await client.post(f"/api/v1/users/{uid}/regenerate-key",
+                               json={}, headers=headers)
+    delete = await client.delete(f"/api/v1/users/{uid}", headers=headers)
+    sync = await client.post(f"/api/v1/users/{uid}/sync", headers=headers)
+    for name, resp in (("role", role), ("reset", reset), ("disable", disable),
+                       ("enable", enable), ("rotate", rotate),
+                       ("delete", delete), ("sync", sync)):
+        assert resp.status_code == 403, f"{name}: {resp.status_code} {resp.text}"
+        assert "超管" in resp.json()["detail"]
+
+
+async def test_cannot_create_user_with_env_admin_username(client, make_user, auth_headers):
+    from app.core.config import get_settings
+    chief = await make_user("chief", "Admin#12345", "admin")
+    r = await client.post("/api/v1/users",
+                          json={"username": get_settings().first_admin_username,
+                                "password": "Xxxx#12345"},
+                          headers=auth_headers(chief))
+    assert r.status_code == 400, r.text
+    assert "超管" in r.json()["detail"]
+
+
+async def test_users_list_marks_env_admin(client, make_user, auth_headers):
+    from app.core.config import get_settings
+    chief = await make_user("chief", "Admin#12345", "admin")
+    await _make_env_admin(make_user)
+    r = await client.get("/api/v1/users", headers=auth_headers(chief))
+    assert r.status_code == 200
+    flagged = {u["username"]: u["is_env_admin"] for u in r.json()}
+    assert flagged[get_settings().first_admin_username] is True
+    assert flagged["chief"] is False

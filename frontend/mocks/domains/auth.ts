@@ -24,6 +24,7 @@ export function makeMe(overrides: Partial<Me> = {}): Me {
     key_synced_at: null,
     must_change_password: false,
     last_login_at: null,
+    is_env_admin: false,
     ...overrides,
   };
 }

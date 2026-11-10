@@ -1,328 +1,2190 @@
 {
   "openapi": "3.1.0",
-  "info": { "title": "OpenViking Dashboard", "version": "0.2.0-contract" },
+  "info": {
+    "title": "OpenViking Dashboard",
+    "version": "0.1.0"
+  },
   "paths": {
     "/healthz": {
-      "get": { "tags": ["system"], "responses": { "200": { "description": "健康状态", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HealthResponse" } } } } } }
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Healthz",
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "/api/v1/auth/login": {
       "post": {
-        "tags": ["auth"],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } } } },
-        "responses": { "200": { "description": "登录成功", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TokenResponse" } } } } }
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
-    "/api/v1/auth/logout": {
-      "post": { "tags": ["auth"], "responses": { "204": { "description": "已注销" } } }
-    },
     "/api/v1/auth/me": {
-      "get": { "tags": ["auth"], "responses": { "200": { "description": "当前用户", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MeOut" } } } } } }
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Me",
+        "operationId": "me_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     },
     "/api/v1/auth/change-password": {
       "post": {
-        "tags": ["auth"],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ChangePasswordRequest" } } } },
-        "responses": { "204": { "description": "修改成功" } }
+        "tags": [
+          "auth"
+        ],
+        "summary": "Change Password",
+        "operationId": "change_password_api_v1_auth_change_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/tenants": {
-      "get": { "tags": ["tenants"], "parameters": [{ "name": "q", "in": "query", "required": false, "schema": { "type": "string" } }],
-        "responses": { "200": { "description": "团队列表", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TenantListItem" } } } } } } },
+      "get": {
+        "tags": [
+          "tenants"
+        ],
+        "summary": "List Tenants",
+        "operationId": "list_tenants_api_v1_tenants_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
-        "tags": ["tenants"],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TenantCreateRequest" } } } },
-        "responses": { "201": { "description": "已创建", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TenantCreatedOut" } } } } }
+        "tags": [
+          "tenants"
+        ],
+        "summary": "Create Tenant",
+        "operationId": "create_tenant_api_v1_tenants_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantCreatedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/tenants/{tenant_id}": {
-      "get": { "tags": ["tenants"], "parameters": [{ "name": "tenant_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
-        "responses": { "200": { "description": "团队详情", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TenantDetailOut" } } } } } },
+      "get": {
+        "tags": [
+          "tenants"
+        ],
+        "summary": "Get Tenant",
+        "operationId": "get_tenant_api_v1_tenants__tenant_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "patch": {
-        "tags": ["tenants"],
-        "parameters": [{ "name": "tenant_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TenantUpdateRequest" } } } },
-        "responses": { "200": { "description": "已更新", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TenantListItem" } } } } }
+        "tags": [
+          "tenants"
+        ],
+        "summary": "Update Tenant",
+        "operationId": "update_tenant_api_v1_tenants__tenant_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantListItem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       },
       "delete": {
-        "tags": ["tenants"],
-        "parameters": [{ "name": "tenant_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TenantDeleteRequest" } } } },
-        "responses": { "204": { "description": "已删除" } }
+        "tags": [
+          "tenants"
+        ],
+        "summary": "Delete Tenant",
+        "operationId": "delete_tenant_api_v1_tenants__tenant_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantDeleteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/tenants/{tenant_id}/sync": {
-      "post": { "tags": ["tenants"], "parameters": [{ "name": "tenant_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
-        "responses": { "200": { "description": "同步报告", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TenantSyncReport" } } } } } }
+      "post": {
+        "tags": [
+          "tenants"
+        ],
+        "summary": "Sync Tenant",
+        "operationId": "sync_tenant_api_v1_tenants__tenant_id__sync_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantSyncReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "/api/v1/users": {
-      "get": { "tags": ["users"],
-        "parameters": [
-          { "name": "tenant_id", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "keyword", "in": "query", "required": false, "schema": { "type": "string" } }
+      "get": {
+        "tags": [
+          "users"
         ],
-        "responses": { "200": { "description": "用户列表", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/UserOut" } } } } } } },
+        "summary": "List Users",
+        "operationId": "list_users_api_v1_users_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Keyword"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserOut"
+                  },
+                  "title": "Response List Users Api V1 Users Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
-        "tags": ["users"],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserCreateRequest" } } } },
-        "responses": { "201": { "description": "已开通", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserOut" } } } } }
+        "tags": [
+          "users"
+        ],
+        "summary": "Create User",
+        "operationId": "create_user_api_v1_users_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/users/{user_id}/role": {
       "patch": {
-        "tags": ["users"],
-        "parameters": [{ "name": "user_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserRoleRequest" } } } },
-        "responses": { "200": { "description": "已更新", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserOut" } } } } }
+        "tags": [
+          "users"
+        ],
+        "summary": "Set User Role",
+        "operationId": "set_user_role_api_v1_users__user_id__role_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/users/{user_id}/reset-password": {
       "post": {
-        "tags": ["users"],
-        "parameters": [{ "name": "user_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserResetPasswordRequest" } } } },
-        "responses": { "204": { "description": "已重置" } }
+        "tags": [
+          "users"
+        ],
+        "summary": "Reset User Password",
+        "operationId": "reset_user_password_api_v1_users__user_id__reset_password_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserResetPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/users/{user_id}/disable": {
-      "post": { "tags": ["users"], "parameters": [{ "name": "user_id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "204": { "description": "已禁用" } } }
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Disable User",
+        "operationId": "disable_user_api_v1_users__user_id__disable_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "/api/v1/users/{user_id}/enable": {
-      "post": { "tags": ["users"], "parameters": [{ "name": "user_id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "204": { "description": "已启用" } } }
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Enable User",
+        "operationId": "enable_user_api_v1_users__user_id__enable_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "/api/v1/users/{user_id}/regenerate-key": {
       "post": {
-        "tags": ["users"],
-        "parameters": [{ "name": "user_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/KeyRegenerateRequest" } } } },
-        "responses": { "200": { "description": "新 key 已签发", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserOut" } } } } }
+        "tags": [
+          "users"
+        ],
+        "summary": "Regenerate User Key",
+        "operationId": "regenerate_user_key_api_v1_users__user_id__regenerate_key_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyRegenerateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/users/{user_id}": {
-      "delete": { "tags": ["users"], "parameters": [{ "name": "user_id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "204": { "description": "已销户" } } }
+      "delete": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Delete User",
+        "operationId": "delete_user_api_v1_users__user_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "/api/v1/users/{user_id}/sync": {
-      "post": { "tags": ["users"], "parameters": [{ "name": "user_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
-        "responses": { "200": { "description": "校准报告", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserSyncReport" } } } } } }
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Sync User",
+        "operationId": "sync_user_api_v1_users__user_id__sync_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSyncReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "/api/v1/credentials": {
-      "get": { "tags": ["credentials"], "responses": { "200": { "description": "凭证视图", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CredentialView" } } } } } }
+      "get": {
+        "tags": [
+          "credentials"
+        ],
+        "summary": "Get Credentials",
+        "operationId": "get_credentials_api_v1_credentials_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     },
     "/api/v1/credentials/reveal": {
-      "post": { "tags": ["credentials"], "responses": { "200": { "description": "明文 key（审计 key.view）", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RevealedKeyOut" } } } } } }
+      "post": {
+        "tags": [
+          "credentials"
+        ],
+        "summary": "Reveal Key",
+        "operationId": "reveal_key_api_v1_credentials_reveal_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevealedKeyOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     },
     "/api/v1/credentials/copy": {
-      "post": { "tags": ["credentials"], "responses": { "200": { "description": "明文 key（审计 key.copy）", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RevealedKeyOut" } } } } } }
+      "post": {
+        "tags": [
+          "credentials"
+        ],
+        "summary": "Copy Key",
+        "operationId": "copy_key_api_v1_credentials_copy_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevealedKeyOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     },
     "/api/v1/credentials/regenerate": {
       "post": {
-        "tags": ["credentials"],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/KeyRegenerateRequest" } } } },
-        "responses": { "200": { "description": "重签后的明文 key", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RevealedKeyOut" } } } } }
+        "tags": [
+          "credentials"
+        ],
+        "summary": "Regenerate Own Key",
+        "operationId": "regenerate_own_key_api_v1_credentials_regenerate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyRegenerateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevealedKeyOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     }
   },
   "components": {
     "schemas": {
-      "HealthResponse": {
-        "type": "object", "required": ["status", "db", "openviking"],
-        "properties": {
-          "status": { "type": "string", "enum": ["ok", "degraded"] },
-          "db": { "type": "boolean" },
-          "openviking": { "type": "boolean" },
-          "version": { "type": ["string", "null"] }
-        }
-      },
-      "LoginRequest": {
-        "type": "object", "required": ["username", "password"],
-        "properties": { "username": { "type": "string" }, "password": { "type": "string" } }
-      },
-      "TokenResponse": {
-        "type": "object", "required": ["access_token", "expires_in", "role"],
-        "properties": {
-          "access_token": { "type": "string" },
-          "token_type": { "type": "string", "default": "bearer" },
-          "expires_in": { "type": "integer" },
-          "role": { "type": "string" }
-        }
-      },
-      "MeOut": {
-        "type": "object", "required": ["id", "username", "role", "is_active"],
-        "properties": {
-          "id": { "type": "integer" },
-          "username": { "type": "string" },
-          "role": { "type": "string", "enum": ["admin", "team_admin", "user"] },
-          "is_active": { "type": "boolean" },
-          "tenant_id": { "type": ["integer", "null"] },
-          "account_id": { "type": ["string", "null"] },
-          "ov_user_id": { "type": ["string", "null"] },
-          "ov_role": { "type": ["string", "null"] },
-          "has_ov_key": { "type": "boolean" },
-          "key_synced_at": { "type": ["string", "null"], "format": "date-time" },
-          "must_change_password": { "type": "boolean" },
-          "last_login_at": { "type": ["string", "null"], "format": "date-time" }
-        }
-      },
       "ChangePasswordRequest": {
-        "type": "object", "required": ["old_password", "new_password"],
-        "properties": { "old_password": { "type": "string" }, "new_password": { "type": "string", "minLength": 8, "maxLength": 128 } }
-      },
-      "TenantListItem": {
-        "type": "object", "required": ["id", "account_id", "admin_user_id", "user_count"],
         "properties": {
-          "id": { "type": "integer" },
-          "account_id": { "type": "string" },
-          "display_name": { "type": ["string", "null"] },
-          "remark": { "type": ["string", "null"] },
-          "admin_user_id": { "type": "string" },
-          "user_count": { "type": "integer" },
-          "synced_at": { "type": ["string", "null"], "format": "date-time" },
-          "created_at": { "type": ["string", "null"], "format": "date-time" }
-        }
-      },
-      "TenantDetailOut": {
-        "allOf": [{ "$ref": "#/components/schemas/TenantListItem" }, {
-          "type": "object",
-          "properties": {
-            "ov_account": { "type": ["object", "null"], "additionalProperties": true },
-            "configuration": { "type": ["object", "null"], "additionalProperties": true },
-            "settings": { "type": ["object", "null"], "additionalProperties": true },
-            "ov_error": { "type": ["string", "null"] }
+          "old_password": {
+            "type": "string",
+            "title": "Old Password"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "New Password"
           }
-        }]
-      },
-      "TenantCreateRequest": {
-        "type": "object", "required": ["account_id", "admin_user_id", "admin_username", "admin_password"],
-        "properties": {
-          "account_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
-          "admin_user_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
-          "admin_username": { "type": "string", "minLength": 1, "maxLength": 64 },
-          "admin_password": { "type": "string", "minLength": 8, "maxLength": 128 },
-          "display_name": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 },
-          "remark": { "type": ["string", "null"], "minLength": 1, "maxLength": 500 },
-          "seed": { "type": ["string", "null"], "minLength": 1, "maxLength": 256 }
-        }
-      },
-      "TenantCreatedOut": {
+        },
         "type": "object",
-        "required": ["id", "account_id", "admin_user_id", "team_admin_id", "team_admin_username", "key_provisioned"],
-        "properties": {
-          "id": { "type": "integer" },
-          "account_id": { "type": "string" },
-          "admin_user_id": { "type": "string" },
-          "team_admin_id": { "type": "integer" },
-          "team_admin_username": { "type": "string" },
-          "key_provisioned": { "type": "boolean" }
-        }
-      },
-      "TenantUpdateRequest": {
-        "type": "object",
-        "properties": {
-          "display_name": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 },
-          "remark": { "type": ["string", "null"], "minLength": 1, "maxLength": 500 }
-        }
-      },
-      "TenantDeleteRequest": {
-        "type": "object",
-        "properties": {
-          "confirm": { "type": "boolean", "default": false }
-        }
-      },
-      "SyncUserInfo": {
-        "type": "object", "required": ["ov_user_id"],
-        "properties": {
-          "ov_user_id": { "type": "string" },
-          "ov_role": { "type": ["string", "null"] },
-          "username": { "type": ["string", "null"] }
-        }
-      },
-      "TenantSyncReport": {
-        "type": "object",
-        "required": ["account_id", "ov_user_count", "local_user_count", "matched", "synced_at"],
-        "properties": {
-          "account_id": { "type": "string" },
-          "ov_user_count": { "type": "integer" },
-          "local_user_count": { "type": "integer" },
-          "matched": { "type": "integer" },
-          "missing_local": { "type": "array", "items": { "$ref": "#/components/schemas/SyncUserInfo" } },
-          "extra_local": { "type": "array", "items": { "$ref": "#/components/schemas/SyncUserInfo" } },
-          "synced_at": { "type": "string", "format": "date-time" }
-        }
-      },
-      "UserCreateRequest": {
-        "type": "object", "required": ["username", "password"],
-        "properties": {
-          "username": { "type": "string", "minLength": 1, "maxLength": 64 },
-          "password": { "type": "string", "minLength": 8, "maxLength": 128 },
-          "tenant_id": { "type": ["integer", "null"] },
-          "ov_user_id": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9_-]{1,64}$" },
-          "role": { "type": "string", "enum": ["team_admin", "user"], "default": "user" },
-          "seed": { "type": ["string", "null"], "minLength": 1, "maxLength": 256 }
-        }
-      },
-      "UserOut": {
-        "type": "object", "required": ["id", "username", "role", "is_active"],
-        "properties": {
-          "id": { "type": "integer" },
-          "username": { "type": "string" },
-          "role": { "type": "string", "enum": ["admin", "team_admin", "user"] },
-          "is_active": { "type": "boolean" },
-          "tenant_id": { "type": ["integer", "null"] },
-          "account_id": { "type": ["string", "null"] },
-          "ov_user_id": { "type": ["string", "null"] },
-          "ov_role": { "type": ["string", "null"] },
-          "has_key": { "type": "boolean" },
-          "key_state": { "type": "string", "enum": ["current", "pending"] },
-          "key_synced_at": { "type": ["string", "null"], "format": "date-time" },
-          "must_change_password": { "type": "boolean" },
-          "last_login_at": { "type": ["string", "null"], "format": "date-time" },
-          "created_at": { "type": ["string", "null"], "format": "date-time" }
-        }
-      },
-      "UserRoleRequest": {
-        "type": "object", "required": ["role"],
-        "properties": { "role": { "type": "string", "enum": ["team_admin", "user"] } }
-      },
-      "UserResetPasswordRequest": {
-        "type": "object", "required": ["new_password"],
-        "properties": {
-          "new_password": { "type": "string", "minLength": 8, "maxLength": 128 },
-          "regenerate_key": { "type": "boolean", "default": false },
-          "seed": { "type": ["string", "null"], "minLength": 1, "maxLength": 256 }
-        }
-      },
-      "KeyRegenerateRequest": {
-        "type": "object",
-        "properties": { "seed": { "type": ["string", "null"], "minLength": 1, "maxLength": 256 } }
-      },
-      "UserSyncReport": {
-        "type": "object", "required": ["account_id", "ov_user_id", "ov_exists", "consistent"],
-        "properties": {
-          "account_id": { "type": "string" },
-          "ov_user_id": { "type": "string" },
-          "ov_exists": { "type": "boolean" },
-          "local_ov_role": { "type": ["string", "null"] },
-          "ov_role": { "type": ["string", "null"] },
-          "consistent": { "type": "boolean" }
-        }
+        "required": [
+          "old_password",
+          "new_password"
+        ],
+        "title": "ChangePasswordRequest"
       },
       "CredentialView": {
-        "type": "object", "required": ["endpoint", "account_id", "ov_user_id", "has_key"],
         "properties": {
-          "endpoint": { "type": "string" },
-          "account_id": { "type": "string" },
-          "ov_user_id": { "type": "string" },
-          "has_key": { "type": "boolean" },
-          "key_masked": { "type": ["string", "null"] },
-          "key_hint": { "type": ["string", "null"] },
-          "seed_used": { "type": "boolean" },
-          "key_synced_at": { "type": ["string", "null"], "format": "date-time" }
-        }
+          "endpoint": {
+            "type": "string",
+            "title": "Endpoint"
+          },
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "ov_user_id": {
+            "type": "string",
+            "title": "Ov User Id"
+          },
+          "has_key": {
+            "type": "boolean",
+            "title": "Has Key"
+          },
+          "key_masked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Masked"
+          },
+          "key_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Hint"
+          },
+          "seed_used": {
+            "type": "boolean",
+            "title": "Seed Used",
+            "default": false
+          },
+          "key_synced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Synced At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "endpoint",
+          "account_id",
+          "ov_user_id",
+          "has_key"
+        ],
+        "title": "CredentialView"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded"
+            ],
+            "title": "Status"
+          },
+          "db": {
+            "type": "boolean",
+            "title": "Db"
+          },
+          "openviking": {
+            "type": "boolean",
+            "title": "Openviking"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "db",
+          "openviking"
+        ],
+        "title": "HealthResponse"
+      },
+      "KeyRegenerateRequest": {
+        "properties": {
+          "seed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          }
+        },
+        "type": "object",
+        "title": "KeyRegenerateRequest"
+      },
+      "LoginRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginRequest"
+      },
+      "MeOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "ov_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov User Id"
+          },
+          "ov_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov Role"
+          },
+          "has_ov_key": {
+            "type": "boolean",
+            "title": "Has Ov Key",
+            "default": false
+          },
+          "key_synced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Synced At"
+          },
+          "must_change_password": {
+            "type": "boolean",
+            "title": "Must Change Password",
+            "default": false
+          },
+          "last_login_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login At"
+          },
+          "is_env_admin": {
+            "type": "boolean",
+            "title": "Is Env Admin",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "role",
+          "is_active"
+        ],
+        "title": "MeOut",
+        "description": "当前登录用户信息；只暴露 OV key 是否存在的布尔位，不含任何密文。"
       },
       "RevealedKeyOut": {
-        "allOf": [{ "$ref": "#/components/schemas/CredentialView" }, {
-          "type": "object", "required": ["key"],
-          "properties": { "key": { "type": "string" } }
-        }]
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "title": "Endpoint"
+          },
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "ov_user_id": {
+            "type": "string",
+            "title": "Ov User Id"
+          },
+          "has_key": {
+            "type": "boolean",
+            "title": "Has Key"
+          },
+          "key_masked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Masked"
+          },
+          "key_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Hint"
+          },
+          "seed_used": {
+            "type": "boolean",
+            "title": "Seed Used",
+            "default": false
+          },
+          "key_synced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Synced At"
+          },
+          "key": {
+            "type": "string",
+            "title": "Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "endpoint",
+          "account_id",
+          "ov_user_id",
+          "has_key",
+          "key"
+        ],
+        "title": "RevealedKeyOut"
+      },
+      "SyncUserInfo": {
+        "properties": {
+          "ov_user_id": {
+            "type": "string",
+            "title": "Ov User Id"
+          },
+          "ov_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov Role"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ov_user_id"
+        ],
+        "title": "SyncUserInfo"
+      },
+      "TenantCreateRequest": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "title": "Account Id"
+          },
+          "admin_user_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "title": "Admin User Id"
+          },
+          "admin_username": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Admin Username"
+          },
+          "admin_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Admin Password"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "remark": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remark"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "admin_user_id",
+          "admin_username",
+          "admin_password"
+        ],
+        "title": "TenantCreateRequest"
+      },
+      "TenantCreatedOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "admin_user_id": {
+            "type": "string",
+            "title": "Admin User Id"
+          },
+          "team_admin_id": {
+            "type": "integer",
+            "title": "Team Admin Id"
+          },
+          "team_admin_username": {
+            "type": "string",
+            "title": "Team Admin Username"
+          },
+          "key_provisioned": {
+            "type": "boolean",
+            "title": "Key Provisioned"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "account_id",
+          "admin_user_id",
+          "team_admin_id",
+          "team_admin_username",
+          "key_provisioned"
+        ],
+        "title": "TenantCreatedOut"
+      },
+      "TenantDeleteRequest": {
+        "properties": {
+          "confirm": {
+            "type": "boolean",
+            "title": "Confirm",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "TenantDeleteRequest"
+      },
+      "TenantDetailOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "remark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remark"
+          },
+          "admin_user_id": {
+            "type": "string",
+            "title": "Admin User Id"
+          },
+          "user_count": {
+            "type": "integer",
+            "title": "User Count"
+          },
+          "synced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synced At"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "ov_account": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov Account"
+          },
+          "configuration": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Configuration"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settings"
+          },
+          "ov_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "account_id",
+          "admin_user_id",
+          "user_count"
+        ],
+        "title": "TenantDetailOut"
+      },
+      "TenantListItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "remark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remark"
+          },
+          "admin_user_id": {
+            "type": "string",
+            "title": "Admin User Id"
+          },
+          "user_count": {
+            "type": "integer",
+            "title": "User Count"
+          },
+          "synced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synced At"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "account_id",
+          "admin_user_id",
+          "user_count"
+        ],
+        "title": "TenantListItem"
+      },
+      "TenantSyncReport": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "ov_user_count": {
+            "type": "integer",
+            "title": "Ov User Count"
+          },
+          "local_user_count": {
+            "type": "integer",
+            "title": "Local User Count"
+          },
+          "matched": {
+            "type": "integer",
+            "title": "Matched"
+          },
+          "missing_local": {
+            "items": {
+              "$ref": "#/components/schemas/SyncUserInfo"
+            },
+            "type": "array",
+            "title": "Missing Local",
+            "default": []
+          },
+          "extra_local": {
+            "items": {
+              "$ref": "#/components/schemas/SyncUserInfo"
+            },
+            "type": "array",
+            "title": "Extra Local",
+            "default": []
+          },
+          "synced_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Synced At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "ov_user_count",
+          "local_user_count",
+          "matched",
+          "synced_at"
+        ],
+        "title": "TenantSyncReport"
+      },
+      "TenantUpdateRequest": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "remark": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remark"
+          }
+        },
+        "type": "object",
+        "title": "TenantUpdateRequest"
+      },
+      "TokenResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "expires_in",
+          "role"
+        ],
+        "title": "TokenResponse"
+      },
+      "UserCreateRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
+          },
+          "ov_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov User Id"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "team_admin",
+              "user"
+            ],
+            "title": "Role",
+            "default": "user"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "UserCreateRequest"
+      },
+      "UserOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "ov_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov User Id"
+          },
+          "ov_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov Role"
+          },
+          "has_key": {
+            "type": "boolean",
+            "title": "Has Key",
+            "default": false
+          },
+          "key_state": {
+            "type": "string",
+            "enum": [
+              "current",
+              "pending"
+            ],
+            "title": "Key State",
+            "default": "pending"
+          },
+          "key_synced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Synced At"
+          },
+          "must_change_password": {
+            "type": "boolean",
+            "title": "Must Change Password",
+            "default": false
+          },
+          "last_login_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login At"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "is_env_admin": {
+            "type": "boolean",
+            "title": "Is Env Admin",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "role",
+          "is_active"
+        ],
+        "title": "UserOut"
+      },
+      "UserResetPasswordRequest": {
+        "properties": {
+          "new_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "New Password"
+          },
+          "regenerate_key": {
+            "type": "boolean",
+            "title": "Regenerate Key",
+            "default": false
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "new_password"
+        ],
+        "title": "UserResetPasswordRequest"
+      },
+      "UserRoleRequest": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "team_admin",
+              "user"
+            ],
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "title": "UserRoleRequest"
+      },
+      "UserSyncReport": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "ov_user_id": {
+            "type": "string",
+            "title": "Ov User Id"
+          },
+          "ov_exists": {
+            "type": "boolean",
+            "title": "Ov Exists"
+          },
+          "local_ov_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Ov Role"
+          },
+          "ov_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov Role"
+          },
+          "consistent": {
+            "type": "boolean",
+            "title": "Consistent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "ov_user_id",
+          "ov_exists",
+          "consistent"
+        ],
+        "title": "UserSyncReport"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
       }
     }
   }

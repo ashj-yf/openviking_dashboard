@@ -20,9 +20,13 @@ def test_production_config_passes():
     validate_settings(_base_settings())
 
 
-def test_missing_first_admin_fails():
+def test_half_configured_first_admin_fails():
+    """FIRST_ADMIN 只配其一属配置错误（成对校验）。"""
     with pytest.raises(ConfigError) as exc:
         validate_settings(_base_settings(first_admin_password=""))
+    assert "FIRST_ADMIN" in str(exc.value)
+    with pytest.raises(ConfigError) as exc:
+        validate_settings(_base_settings(first_admin_username=""))
     assert "FIRST_ADMIN" in str(exc.value)
 
 
@@ -31,6 +35,11 @@ def test_whitespace_first_admin_fails():
         with pytest.raises(ConfigError) as exc:
             validate_settings(_base_settings(**{field: "   "}))
         assert "FIRST_ADMIN" in str(exc.value)
+
+
+def test_both_first_admin_empty_passes_validation():
+    """env 未配置超管不再一律拒绝启动；放行与否由启动期数据库检查决定（sync_first_admin）。"""
+    validate_settings(_base_settings(first_admin_username="", first_admin_password=""))
 
 
 def test_empty_secrets_always_fail():

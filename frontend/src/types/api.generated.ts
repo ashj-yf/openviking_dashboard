@@ -11,26 +11,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 健康状态 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["HealthResponse"];
-                    };
-                };
-            };
-        };
+        /** Healthz */
+        get: operations["healthz_healthz_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -48,63 +30,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["LoginRequest"];
-                };
-            };
-            responses: {
-                /** @description 登录成功 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TokenResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 已注销 */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        /** Login */
+        post: operations["login_api_v1_auth_login_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -118,26 +45,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 当前用户 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["MeOut"];
-                    };
-                };
-            };
-        };
+        /** Me */
+        get: operations["me_api_v1_auth_me_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -155,28 +64,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ChangePasswordRequest"];
-                };
-            };
-            responses: {
-                /** @description 修改成功 */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
+        /** Change Password */
+        post: operations["change_password_api_v1_auth_change_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
+        get?: never;
+        put?: never;
+        /** Logout */
+        post: operations["logout_api_v1_auth_logout_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -190,53 +96,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: {
-            parameters: {
-                query?: {
-                    q?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 团队列表 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TenantListItem"][];
-                    };
-                };
-            };
-        };
+        /** List Tenants */
+        get: operations["list_tenants_api_v1_tenants_get"];
         put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["TenantCreateRequest"];
-                };
-            };
-            responses: {
-                /** @description 已创建 */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TenantCreatedOut"];
-                    };
-                };
-            };
-        };
+        /** Create Tenant */
+        post: operations["create_tenant_api_v1_tenants_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -250,82 +114,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    tenant_id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 团队详情 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TenantDetailOut"];
-                    };
-                };
-            };
-        };
+        /** Get Tenant */
+        get: operations["get_tenant_api_v1_tenants__tenant_id__get"];
         put?: never;
         post?: never;
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    tenant_id: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["TenantDeleteRequest"];
-                };
-            };
-            responses: {
-                /** @description 已删除 */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        /** Delete Tenant */
+        delete: operations["delete_tenant_api_v1_tenants__tenant_id__delete"];
         options?: never;
         head?: never;
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    tenant_id: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["TenantUpdateRequest"];
-                };
-            };
-            responses: {
-                /** @description 已更新 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TenantListItem"];
-                    };
-                };
-            };
-        };
+        /** Update Tenant */
+        patch: operations["update_tenant_api_v1_tenants__tenant_id__patch"];
         trace?: never;
     };
     "/api/v1/tenants/{tenant_id}/sync": {
@@ -337,28 +135,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    tenant_id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 同步报告 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TenantSyncReport"];
-                    };
-                };
-            };
-        };
+        /** Sync Tenant */
+        post: operations["sync_tenant_api_v1_tenants__tenant_id__sync_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -372,54 +150,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: {
-            parameters: {
-                query?: {
-                    tenant_id?: number;
-                    keyword?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 用户列表 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["UserOut"][];
-                    };
-                };
-            };
-        };
+        /** List Users */
+        get: operations["list_users_api_v1_users_get"];
         put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["UserCreateRequest"];
-                };
-            };
-            responses: {
-                /** @description 已开通 */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["UserOut"];
-                    };
-                };
-            };
-        };
+        /** Create User */
+        post: operations["create_user_api_v1_users_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -439,32 +174,8 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    user_id: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["UserRoleRequest"];
-                };
-            };
-            responses: {
-                /** @description 已更新 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["UserOut"];
-                    };
-                };
-            };
-        };
+        /** Set User Role */
+        patch: operations["set_user_role_api_v1_users__user_id__role_patch"];
         trace?: never;
     };
     "/api/v1/users/{user_id}/reset-password": {
@@ -476,30 +187,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    user_id: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["UserResetPasswordRequest"];
-                };
-            };
-            responses: {
-                /** @description 已重置 */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        /** Reset User Password */
+        post: operations["reset_user_password_api_v1_users__user_id__reset_password_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -515,26 +204,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    user_id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 已禁用 */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        /** Disable User */
+        post: operations["disable_user_api_v1_users__user_id__disable_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -550,26 +221,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    user_id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 已启用 */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        /** Enable User */
+        post: operations["enable_user_api_v1_users__user_id__enable_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -585,32 +238,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    user_id: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["KeyRegenerateRequest"];
-                };
-            };
-            responses: {
-                /** @description 新 key 已签发 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["UserOut"];
-                    };
-                };
-            };
-        };
+        /** Regenerate User Key */
+        post: operations["regenerate_user_key_api_v1_users__user_id__regenerate_key_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -627,26 +256,8 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    user_id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 已销户 */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        /** Delete User */
+        delete: operations["delete_user_api_v1_users__user_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -661,28 +272,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    user_id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 校准报告 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["UserSyncReport"];
-                    };
-                };
-            };
-        };
+        /** Sync User */
+        post: operations["sync_user_api_v1_users__user_id__sync_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -696,26 +287,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 凭证视图 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CredentialView"];
-                    };
-                };
-            };
-        };
+        /** Get Credentials */
+        get: operations["get_credentials_api_v1_credentials_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -733,26 +306,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 明文 key（审计 key.view） */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["RevealedKeyOut"];
-                    };
-                };
-            };
-        };
+        /** Reveal Key */
+        post: operations["reveal_key_api_v1_credentials_reveal_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -768,26 +323,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 明文 key（审计 key.copy） */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["RevealedKeyOut"];
-                    };
-                };
-            };
-        };
+        /** Copy Key */
+        post: operations["copy_key_api_v1_credentials_copy_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -803,30 +340,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["KeyRegenerateRequest"];
-                };
-            };
-            responses: {
-                /** @description 重签后的明文 key */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["RevealedKeyOut"];
-                    };
-                };
-            };
-        };
+        /** Regenerate Own Key */
+        post: operations["regenerate_own_key_api_v1_credentials_regenerate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -837,176 +352,391 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        HealthResponse: {
-            /** @enum {string} */
-            status: "ok" | "degraded";
-            db: boolean;
-            openviking: boolean;
-            version?: string | null;
-        };
-        LoginRequest: {
-            username: string;
-            password: string;
-        };
-        TokenResponse: {
-            access_token: string;
-            /** @default bearer */
-            token_type: string;
-            expires_in: number;
-            role: string;
-        };
-        MeOut: {
-            id: number;
-            username: string;
-            /** @enum {string} */
-            role: "admin" | "team_admin" | "user";
-            is_active: boolean;
-            tenant_id?: number | null;
-            account_id?: string | null;
-            ov_user_id?: string | null;
-            ov_role?: string | null;
-            has_ov_key?: boolean;
-            /** Format: date-time */
-            key_synced_at?: string | null;
-            must_change_password?: boolean;
-            /** Format: date-time */
-            last_login_at?: string | null;
-        };
+        /** ChangePasswordRequest */
         ChangePasswordRequest: {
+            /** Old Password */
             old_password: string;
+            /** New Password */
             new_password: string;
         };
-        TenantListItem: {
-            id: number;
+        /** CredentialView */
+        CredentialView: {
+            /** Endpoint */
+            endpoint: string;
+            /** Account Id */
             account_id: string;
-            display_name?: string | null;
-            remark?: string | null;
-            admin_user_id: string;
-            user_count: number;
-            /** Format: date-time */
-            synced_at?: string | null;
-            /** Format: date-time */
-            created_at?: string | null;
+            /** Ov User Id */
+            ov_user_id: string;
+            /** Has Key */
+            has_key: boolean;
+            /** Key Masked */
+            key_masked?: string | null;
+            /** Key Hint */
+            key_hint?: string | null;
+            /**
+             * Seed Used
+             * @default false
+             */
+            seed_used: boolean;
+            /** Key Synced At */
+            key_synced_at?: string | null;
         };
-        TenantDetailOut: components["schemas"]["TenantListItem"] & {
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HealthResponse */
+        HealthResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "degraded";
+            /** Db */
+            db: boolean;
+            /** Openviking */
+            openviking: boolean;
+            /** Version */
+            version?: string | null;
+        };
+        /** KeyRegenerateRequest */
+        KeyRegenerateRequest: {
+            /** Seed */
+            seed?: string | null;
+        };
+        /** LoginRequest */
+        LoginRequest: {
+            /** Username */
+            username: string;
+            /** Password */
+            password: string;
+        };
+        /**
+         * MeOut
+         * @description 当前登录用户信息；只暴露 OV key 是否存在的布尔位，不含任何密文。
+         */
+        MeOut: {
+            /** Id */
+            id: number;
+            /** Username */
+            username: string;
+            /** Role */
+            role: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Tenant Id */
+            tenant_id?: number | null;
+            /** Account Id */
+            account_id?: string | null;
+            /** Ov User Id */
+            ov_user_id?: string | null;
+            /** Ov Role */
+            ov_role?: string | null;
+            /**
+             * Has Ov Key
+             * @default false
+             */
+            has_ov_key: boolean;
+            /** Key Synced At */
+            key_synced_at?: string | null;
+            /**
+             * Must Change Password
+             * @default false
+             */
+            must_change_password: boolean;
+            /** Last Login At */
+            last_login_at?: string | null;
+            /**
+             * Is Env Admin
+             * @default false
+             */
+            is_env_admin: boolean;
+        };
+        /** RevealedKeyOut */
+        RevealedKeyOut: {
+            /** Endpoint */
+            endpoint: string;
+            /** Account Id */
+            account_id: string;
+            /** Ov User Id */
+            ov_user_id: string;
+            /** Has Key */
+            has_key: boolean;
+            /** Key Masked */
+            key_masked?: string | null;
+            /** Key Hint */
+            key_hint?: string | null;
+            /**
+             * Seed Used
+             * @default false
+             */
+            seed_used: boolean;
+            /** Key Synced At */
+            key_synced_at?: string | null;
+            /** Key */
+            key: string;
+        };
+        /** SyncUserInfo */
+        SyncUserInfo: {
+            /** Ov User Id */
+            ov_user_id: string;
+            /** Ov Role */
+            ov_role?: string | null;
+            /** Username */
+            username?: string | null;
+        };
+        /** TenantCreateRequest */
+        TenantCreateRequest: {
+            /** Account Id */
+            account_id: string;
+            /** Admin User Id */
+            admin_user_id: string;
+            /** Admin Username */
+            admin_username: string;
+            /** Admin Password */
+            admin_password: string;
+            /** Display Name */
+            display_name?: string | null;
+            /** Remark */
+            remark?: string | null;
+            /** Seed */
+            seed?: string | null;
+        };
+        /** TenantCreatedOut */
+        TenantCreatedOut: {
+            /** Id */
+            id: number;
+            /** Account Id */
+            account_id: string;
+            /** Admin User Id */
+            admin_user_id: string;
+            /** Team Admin Id */
+            team_admin_id: number;
+            /** Team Admin Username */
+            team_admin_username: string;
+            /** Key Provisioned */
+            key_provisioned: boolean;
+        };
+        /** TenantDeleteRequest */
+        TenantDeleteRequest: {
+            /**
+             * Confirm
+             * @default false
+             */
+            confirm: boolean;
+        };
+        /** TenantDetailOut */
+        TenantDetailOut: {
+            /** Id */
+            id: number;
+            /** Account Id */
+            account_id: string;
+            /** Display Name */
+            display_name?: string | null;
+            /** Remark */
+            remark?: string | null;
+            /** Admin User Id */
+            admin_user_id: string;
+            /** User Count */
+            user_count: number;
+            /** Synced At */
+            synced_at?: string | null;
+            /** Created At */
+            created_at?: string | null;
+            /** Ov Account */
             ov_account?: {
                 [key: string]: unknown;
             } | null;
+            /** Configuration */
             configuration?: {
                 [key: string]: unknown;
             } | null;
+            /** Settings */
             settings?: {
                 [key: string]: unknown;
             } | null;
+            /** Ov Error */
             ov_error?: string | null;
         };
-        TenantCreateRequest: {
-            account_id: string;
-            admin_user_id: string;
-            admin_username: string;
-            admin_password: string;
-            display_name?: string | null;
-            remark?: string | null;
-            seed?: string | null;
-        };
-        TenantCreatedOut: {
+        /** TenantListItem */
+        TenantListItem: {
+            /** Id */
             id: number;
+            /** Account Id */
             account_id: string;
-            admin_user_id: string;
-            team_admin_id: number;
-            team_admin_username: string;
-            key_provisioned: boolean;
-        };
-        TenantUpdateRequest: {
+            /** Display Name */
             display_name?: string | null;
+            /** Remark */
             remark?: string | null;
+            /** Admin User Id */
+            admin_user_id: string;
+            /** User Count */
+            user_count: number;
+            /** Synced At */
+            synced_at?: string | null;
+            /** Created At */
+            created_at?: string | null;
         };
-        TenantDeleteRequest: {
-            /** @default false */
-            confirm: boolean;
-        };
-        SyncUserInfo: {
-            ov_user_id: string;
-            ov_role?: string | null;
-            username?: string | null;
-        };
+        /** TenantSyncReport */
         TenantSyncReport: {
+            /** Account Id */
             account_id: string;
+            /** Ov User Count */
             ov_user_count: number;
+            /** Local User Count */
             local_user_count: number;
+            /** Matched */
             matched: number;
-            missing_local?: components["schemas"]["SyncUserInfo"][];
-            extra_local?: components["schemas"]["SyncUserInfo"][];
-            /** Format: date-time */
+            /**
+             * Missing Local
+             * @default []
+             */
+            missing_local: components["schemas"]["SyncUserInfo"][];
+            /**
+             * Extra Local
+             * @default []
+             */
+            extra_local: components["schemas"]["SyncUserInfo"][];
+            /**
+             * Synced At
+             * Format: date-time
+             */
             synced_at: string;
         };
+        /** TenantUpdateRequest */
+        TenantUpdateRequest: {
+            /** Display Name */
+            display_name?: string | null;
+            /** Remark */
+            remark?: string | null;
+        };
+        /** TokenResponse */
+        TokenResponse: {
+            /** Access Token */
+            access_token: string;
+            /**
+             * Token Type
+             * @default bearer
+             */
+            token_type: string;
+            /** Expires In */
+            expires_in: number;
+            /** Role */
+            role: string;
+        };
+        /** UserCreateRequest */
         UserCreateRequest: {
+            /** Username */
             username: string;
+            /** Password */
             password: string;
+            /** Tenant Id */
             tenant_id?: number | null;
+            /** Ov User Id */
             ov_user_id?: string | null;
             /**
+             * Role
              * @default user
              * @enum {string}
              */
             role: "team_admin" | "user";
+            /** Seed */
             seed?: string | null;
         };
+        /** UserOut */
         UserOut: {
+            /** Id */
             id: number;
+            /** Username */
             username: string;
-            /** @enum {string} */
-            role: "admin" | "team_admin" | "user";
+            /** Role */
+            role: string;
+            /** Is Active */
             is_active: boolean;
+            /** Tenant Id */
             tenant_id?: number | null;
+            /** Account Id */
             account_id?: string | null;
+            /** Ov User Id */
             ov_user_id?: string | null;
+            /** Ov Role */
             ov_role?: string | null;
-            has_key?: boolean;
-            /** @enum {string} */
-            key_state?: "current" | "pending";
-            /** Format: date-time */
+            /**
+             * Has Key
+             * @default false
+             */
+            has_key: boolean;
+            /**
+             * Key State
+             * @default pending
+             * @enum {string}
+             */
+            key_state: "current" | "pending";
+            /** Key Synced At */
             key_synced_at?: string | null;
-            must_change_password?: boolean;
-            /** Format: date-time */
+            /**
+             * Must Change Password
+             * @default false
+             */
+            must_change_password: boolean;
+            /** Last Login At */
             last_login_at?: string | null;
-            /** Format: date-time */
+            /** Created At */
             created_at?: string | null;
+            /**
+             * Is Env Admin
+             * @default false
+             */
+            is_env_admin: boolean;
         };
+        /** UserResetPasswordRequest */
+        UserResetPasswordRequest: {
+            /** New Password */
+            new_password: string;
+            /**
+             * Regenerate Key
+             * @default false
+             */
+            regenerate_key: boolean;
+            /** Seed */
+            seed?: string | null;
+        };
+        /** UserRoleRequest */
         UserRoleRequest: {
-            /** @enum {string} */
+            /**
+             * Role
+             * @enum {string}
+             */
             role: "team_admin" | "user";
         };
-        UserResetPasswordRequest: {
-            new_password: string;
-            /** @default false */
-            regenerate_key: boolean;
-            seed?: string | null;
-        };
-        KeyRegenerateRequest: {
-            seed?: string | null;
-        };
+        /** UserSyncReport */
         UserSyncReport: {
+            /** Account Id */
             account_id: string;
+            /** Ov User Id */
             ov_user_id: string;
+            /** Ov Exists */
             ov_exists: boolean;
+            /** Local Ov Role */
             local_ov_role?: string | null;
+            /** Ov Role */
             ov_role?: string | null;
+            /** Consistent */
             consistent: boolean;
         };
-        CredentialView: {
-            endpoint: string;
-            account_id: string;
-            ov_user_id: string;
-            has_key: boolean;
-            key_masked?: string | null;
-            key_hint?: string | null;
-            seed_used?: boolean;
-            /** Format: date-time */
-            key_synced_at?: string | null;
-        };
-        RevealedKeyOut: components["schemas"]["CredentialView"] & {
-            key: string;
+        /** ValidationError */
+        ValidationError: {
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
     };
     responses: never;
@@ -1016,4 +746,700 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    healthz_healthz_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    login_api_v1_auth_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    me_api_v1_auth_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeOut"];
+                };
+            };
+        };
+    };
+    change_password_api_v1_auth_change_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    logout_api_v1_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_tenants_api_v1_tenants_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_tenant_api_v1_tenants_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantCreatedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_tenant_api_v1_tenants__tenant_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_tenant_api_v1_tenants__tenant_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantDeleteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_tenant_api_v1_tenants__tenant_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantListItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_tenant_api_v1_tenants__tenant_id__sync_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantSyncReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_users_api_v1_users_get: {
+        parameters: {
+            query?: {
+                tenant_id?: number | null;
+                keyword?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_user_api_v1_users_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_user_role_api_v1_users__user_id__role_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_user_password_api_v1_users__user_id__reset_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserResetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disable_user_api_v1_users__user_id__disable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enable_user_api_v1_users__user_id__enable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regenerate_user_key_api_v1_users__user_id__regenerate_key_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KeyRegenerateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_user_api_v1_users__user_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_user_api_v1_users__user_id__sync_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSyncReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_credentials_api_v1_credentials_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialView"];
+                };
+            };
+        };
+    };
+    reveal_key_api_v1_credentials_reveal_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevealedKeyOut"];
+                };
+            };
+        };
+    };
+    copy_key_api_v1_credentials_copy_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevealedKeyOut"];
+                };
+            };
+        };
+    };
+    regenerate_own_key_api_v1_credentials_regenerate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KeyRegenerateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevealedKeyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+}

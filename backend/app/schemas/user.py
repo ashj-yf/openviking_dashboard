@@ -33,6 +33,8 @@ class UserOut(BaseModel):
     must_change_password: bool = False
     last_login_at: datetime | None = None
     created_at: datetime | None = None
+    # 该账号是否为 .env 配置的超管（UI 不可修改，前端据此禁用操作入口）
+    is_env_admin: bool = False
 
 
 class UserRoleRequest(BaseModel):

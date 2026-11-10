@@ -1,7 +1,7 @@
 """认证路由：登录、当前用户、改密与注销。"""
 from fastapi import APIRouter, HTTPException, Request, Response, status
 
-from app.core.config import get_settings
+from app.core.config import get_settings, is_env_admin
 from app.core.deps import CurrentUser, DBSession
 from app.schemas.auth import (
     ChangePasswordRequest,
@@ -71,6 +71,7 @@ async def me(current_user: CurrentUser) -> MeOut:
         key_synced_at=user.key_synced_at,
         must_change_password=user.must_change_password,
         last_login_at=user.last_login_at,
+        is_env_admin=is_env_admin(get_settings(), user.username),
     )
 
 

@@ -2,10 +2,15 @@ import pytest
 from jwt import decode as jwt_decode
 from sqlalchemy import select
 
-from app.core.config import get_settings
+from app.core.config import ConfigError, Settings, get_settings
 from app.core.security import hash_password
 from app.models import AuditLog, DashboardUser
 from app.services import audit_service, auth_service
+
+
+def _sync_settings(username="rootadmin", password="Sync#12345"):
+    """构造局部 Settings 实例；初始化参数优先于环境变量。"""
+    return Settings(first_admin_username=username, first_admin_password=password)
 
 
 async def _make_user(db, username="u1", password="Admin#12345", role="user", **kw):
@@ -51,16 +56,67 @@ async def test_change_password_rules(db):
     assert await auth_service.authenticate(db, "u1", "NewPass#2026") is not None
 
 
-async def test_ensure_first_admin_idempotent(db):
-    settings = get_settings()
-    await auth_service.ensure_first_admin(db, settings)
-    await auth_service.ensure_first_admin(db, settings)
+async def test_sync_first_admin_creates_when_missing(db):
+    await auth_service.sync_first_admin(db, _sync_settings())
+    user = (await db.scalars(
+        select(DashboardUser).where(DashboardUser.username == "rootadmin")
+    )).one()
+    assert user.role == "admin" and user.is_active is True
+    # UI 禁改超管密码：must_change_password 恒 False，避免密码门禁死锁
+    assert user.must_change_password is False
+    assert await auth_service.authenticate(db, "rootadmin", "Sync#12345") is not None
+
+
+async def test_sync_first_admin_force_refreshes_existing(db):
+    """库中同名账号被降级、停用、密码已改：重启同步必须强制校准并刷新。"""
+    await _make_user(db, username="rootadmin", password="Stale#12345",
+                     role="user", is_active=False)
+    await auth_service.sync_first_admin(db, _sync_settings())
+    user = (await db.scalars(
+        select(DashboardUser).where(DashboardUser.username == "rootadmin")
+    )).one()
+    assert user.role == "admin" and user.is_active is True
+    assert user.must_change_password is False
+    assert await auth_service.authenticate(db, "rootadmin", "Sync#12345") is not None
+    assert await auth_service.authenticate(db, "rootadmin", "Stale#12345") is None
+
+
+async def test_sync_first_admin_idempotent(db):
+    settings = _sync_settings()
+    await auth_service.sync_first_admin(db, settings)
+    await auth_service.sync_first_admin(db, settings)
     rows = (await db.scalars(
         select(DashboardUser).where(DashboardUser.role == "admin")
     )).all()
-    assert len(rows) == 1
-    assert rows[0].username == settings.first_admin_username
-    assert rows[0].must_change_password is True
+    assert len(rows) == 1 and rows[0].username == "rootadmin"
+
+
+async def test_sync_first_admin_noop_when_env_absent(db):
+    """env 未配置时按数据库认证：库中有可用 admin 即放行且不动库。"""
+    await _make_user(db, username="keeper", password="Admin#12345", role="admin")
+    await auth_service.sync_first_admin(db, _sync_settings(username="", password=""))
+    rows = (await db.scalars(select(DashboardUser))).all()
+    assert len(rows) == 1 and rows[0].username == "keeper"
+
+
+async def test_sync_first_admin_rejects_when_no_active_admin(db):
+    """env 未配置且库中无可用（启用的）admin：拒绝启动。"""
+    with pytest.raises(ConfigError, match="FIRST_ADMIN"):
+        await auth_service.sync_first_admin(db, _sync_settings(username="", password=""))
+    await _make_user(db, username="ghost", password="Admin#12345",
+                     role="admin", is_active=False)
+    with pytest.raises(ConfigError):
+        await auth_service.sync_first_admin(db, _sync_settings(username="", password=""))
+
+
+async def test_change_password_rejected_for_env_admin(db):
+    """超管账号 UI 禁改密：自助改密一律拒绝，密码仅可经 .env 轮换。"""
+    username = get_settings().first_admin_username
+    await _make_user(db, username=username, password="Admin#12345", role="admin")
+    user = await auth_service.authenticate(db, username, "Admin#12345")
+    assert user is not None
+    with pytest.raises(ValueError, match=r"\.env"):
+        await auth_service.change_password(db, user, "Admin#12345", "NewPass#2026")
 
 
 async def test_audit_record_persists_and_never_includes_password(db):

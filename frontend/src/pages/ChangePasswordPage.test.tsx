@@ -77,3 +77,23 @@ describe("强制改密门禁与改密页", () => {
     // 同文件：高负载下三段 type + 提交往返超 10s 预算，仅放宽时间，断言不变。
   }, 20000);
 });
+
+describe("超管账号 UI 保护", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("超管账号进入改密页仅显示 .env 提示，不提供表单", async () => {
+    localStorage.setItem("ov-dashboard-token", "jwt-admin");
+    resetAuthMock(
+      makeMe({ id: 1, username: "rootadmin", role: "admin", is_env_admin: true }),
+    );
+    renderWithProviders(<AppRoutes />, { route: "/change-password" });
+
+    expect(
+      await screen.findByText(/超管账号密码仅可通过 \.env 配置修改/),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("旧密码")).toBeNull();
+    expect(screen.queryByRole("button", { name: "提交" })).toBeNull();
+  });
+});

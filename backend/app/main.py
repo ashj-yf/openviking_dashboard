@@ -17,7 +17,8 @@ from app.core.config import ConfigError, get_settings, validate_settings
 from app.core.db import SessionLocal, engine
 from app.core.deps import DBSession
 from app.models.base import Base
-from app.services.auth_service import ensure_first_admin
+from app.schemas.health import HealthResponse
+from app.services.auth_service import sync_first_admin
 from app.services.health_service import get_health
 from app.services.openviking.client import OpenVikingError
 
@@ -58,7 +59,11 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     async with SessionLocal() as db:
-        await ensure_first_admin(db, settings)
+        try:
+            await sync_first_admin(db, settings)
+        except ConfigError as exc:
+            logger.error("%s", exc)
+            raise SystemExit(str(exc))
     yield
 
 
@@ -80,7 +85,7 @@ def create_app() -> FastAPI:
             content={"detail": exc.message, "ov_status": exc.status_code},
         )
 
-    @app.get("/healthz", tags=["system"])
+    @app.get("/healthz", tags=["system"], response_model=HealthResponse)
     async def healthz(db: DBSession) -> JSONResponse:
         body = await get_health(db)
         return JSONResponse(status_code=200 if body.db else 503, content=body.model_dump())

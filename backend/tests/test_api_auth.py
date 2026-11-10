@@ -90,7 +90,7 @@ async def test_login_audits_and_audit_contains_no_password(client, make_user, db
     assert all("Admin#12345" not in (d or "") for d in raw)
 
 
-async def test_lifespan_creates_tables_and_bootstraps_admin_idempotently():
+async def test_lifespan_creates_tables_and_syncs_first_admin_idempotently():
     from sqlalchemy import func, select
     from app.core.config import get_settings
     from app.core.db import SessionLocal
@@ -105,9 +105,35 @@ async def test_lifespan_creates_tables_and_bootstraps_admin_idempotently():
             admin = await session.scalar(
                 select(DashboardUser).where(DashboardUser.username == get_settings().first_admin_username)
             )
-            assert admin.role == "admin" and admin.must_change_password is True
-    # 第二次进入 lifespan：不重复创建
+            assert admin.role == "admin" and admin.is_active is True
+            # 超管 UI 禁改密，密码门禁不可置位（否则死锁）
+            assert admin.must_change_password is False
+    # 第二次进入 lifespan：强制刷新语义下仍不重复创建
     async with app.router.lifespan_context(app):
         async with SessionLocal() as session:
             count = await session.scalar(select(func.count()).select_from(DashboardUser))
             assert count == 1
+
+
+async def test_env_admin_change_password_rejected_and_me_flag(client, make_user):
+    from app.core.config import get_settings
+    username = get_settings().first_admin_username
+    await make_user(username=username, password="Admin#12345", role="admin")
+    token = (await _login(client, username, "Admin#12345")).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    me = await client.get("/api/v1/auth/me", headers=headers)
+    assert me.status_code == 200 and me.json()["is_env_admin"] is True
+    rejected = await client.post("/api/v1/auth/change-password",
+                                 json={"old_password": "Admin#12345", "new_password": "NewPass#2026"},
+                                 headers=headers)
+    assert rejected.status_code == 400
+    assert ".env" in rejected.json()["detail"]
+
+
+async def test_me_flag_false_for_normal_user(client, make_user):
+    await make_user(username="nina", password="Admin#12345", role="user")
+    token = (await _login(client, "nina", "Admin#12345")).json()["access_token"]
+    me = await client.get(
+        "/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"}
+    )
+    assert me.status_code == 200 and me.json()["is_env_admin"] is False

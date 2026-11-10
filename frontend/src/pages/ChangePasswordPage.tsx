@@ -18,6 +18,24 @@ export function ChangePasswordPage() {
   const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
 
+  // 超管账号 UI 禁改密：密码仅可经 .env 配置修改后重启生效（01 AUTH-3）
+  if (me?.is_env_admin) {
+    return (
+      <AuthLayout>
+        <Card style={{ width: 400 }}>
+          <Typography.Title level={3} style={{ marginTop: 0 }}>
+            修改密码
+          </Typography.Title>
+          <Alert
+            type="warning"
+            showIcon
+            message="超管账号密码仅可通过 .env 配置修改，修改后重启服务生效"
+          />
+        </Card>
+      </AuthLayout>
+    );
+  }
+
   async function onFinish(values: ChangePasswordFormValues) {
     setLoading(true);
     try {

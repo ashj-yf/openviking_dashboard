@@ -44,8 +44,10 @@ def validate_settings(s: Settings) -> None:
     """发现问题时抛 ConfigError，消息逐条列出；DEBUG 下放宽 root key 与示例密钥检查。"""
     problems: list[str] = []
 
-    if not s.first_admin_username.strip() or not s.first_admin_password.strip():
-        problems.append("- FIRST_ADMIN_USERNAME / FIRST_ADMIN_PASSWORD 不能为空")
+    has_username = bool(s.first_admin_username.strip())
+    has_password = bool(s.first_admin_password.strip())
+    if has_username != has_password:
+        problems.append("- FIRST_ADMIN_USERNAME / FIRST_ADMIN_PASSWORD 必须成对配置")
     if not s.jwt_secret:
         problems.append("- JWT_SECRET 不能为空")
     if not s.secret_key:
@@ -66,3 +68,9 @@ def validate_settings(s: Settings) -> None:
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def is_env_admin(s: Settings, username: str) -> bool:
+    """该用户名是否为 .env 配置的超管账号（UI 不可修改，见 01 AUTH-3）。"""
+    configured = s.first_admin_username.strip()
+    return bool(configured) and username == configured

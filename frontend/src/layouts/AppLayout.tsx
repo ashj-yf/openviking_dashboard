@@ -14,6 +14,18 @@ import { can, type Permission } from "@/auth/permissions";
 
 const { Header, Sider, Content } = Layout;
 
+/** 用户下拉菜单；超管账号不提供修改密码入口（UI 禁改密，01 AUTH-3）。 */
+export function buildUserMenu(isEnvAdmin: boolean): MenuProps["items"] {
+  const items: MenuProps["items"] = [
+    { type: "divider" },
+    { key: "logout", icon: <LogoutOutlined />, label: "注销", danger: true },
+  ];
+  if (!isEnvAdmin) {
+    items.unshift({ key: "change-password", icon: <KeyOutlined />, label: "修改密码" });
+  }
+  return items;
+}
+
 const NAV_ITEMS: { key: string; label: string; permission: Permission; icon: ReactNode }[] = [
   { key: "/tenants", label: "团队管理", permission: "tenants:manage", icon: <TeamOutlined /> },
   { key: "/users", label: "用户管理", permission: "users:manage", icon: <UserOutlined /> },
@@ -30,11 +42,7 @@ export function AppLayout() {
     [me?.role],
   );
 
-  const userMenu: MenuProps["items"] = [
-    { key: "change-password", icon: <KeyOutlined />, label: "修改密码" },
-    { type: "divider" },
-    { key: "logout", icon: <LogoutOutlined />, label: "注销", danger: true },
-  ];
+  const userMenu: MenuProps["items"] = buildUserMenu(me?.is_env_admin ?? false);
 
   const onUserMenuClick: MenuProps["onClick"] = async ({ key }) => {
     if (key === "change-password") navigate("/change-password");

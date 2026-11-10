@@ -1,6 +1,7 @@
 """用户管理路由：平台 admin 全权，team_admin 限本团队普通成员。"""
 from fastapi import APIRouter, HTTPException, Request, Response, status
 
+from app.core.config import get_settings, is_env_admin
 from app.core.deps import AdminUser, CurrentUser, DBSession, OVAdminDep
 from app.models import DashboardUser
 from app.schemas.user import (
@@ -30,6 +31,7 @@ def _to_out(u: DashboardUser) -> UserOut:
         key_synced_at=u.key_synced_at,
         must_change_password=u.must_change_password,
         last_login_at=u.last_login_at, created_at=u.created_at,
+        is_env_admin=is_env_admin(get_settings(), u.username),
     )
 
 

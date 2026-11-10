@@ -33,6 +33,8 @@ class MeOut(BaseModel):
     key_synced_at: datetime | None = None
     must_change_password: bool = False
     last_login_at: datetime | None = None
+    # 该账号是否为 .env 配置的超管（UI 不可修改，前端据此渲染保护态）
+    is_env_admin: bool = False
 
 
 class ChangePasswordRequest(BaseModel):
