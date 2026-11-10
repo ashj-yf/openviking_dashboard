@@ -10,6 +10,7 @@ import { userApi, type UserListItem } from "@/api/users";
 import { useAuth } from "@/auth/auth-context";
 import { fmtDateTime } from "@/utils/datetime";
 import { ProvisionUserModal } from "./components/ProvisionUserModal";
+import { UserActions } from "./components/UserActions";
 
 export function UserListPage() {
   const { me } = useAuth();
@@ -75,6 +76,12 @@ export function UserListPage() {
       dataIndex: "last_login_at",
       width: 170,
       render: (v: string | null) => fmtDateTime(v),
+    },
+    {
+      title: "操作",
+      key: "actions",
+      width: 360,
+      render: (_, record) => <UserActions user={record} />,
     },
   ];
 

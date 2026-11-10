@@ -32,7 +32,8 @@ describe("UserListPage", () => {
     renderAs("admin");
 
     expect(await screen.findAllByText("alice")).not.toHaveLength(0);
-    expect(screen.getByText("普通用户")).toBeInTheDocument();
+    // T7 操作列为行内加了角色 Select（选中值同样显示"普通用户"），按 td 收窄到 OV 角色列。
+    expect(screen.getByText("普通用户", { selector: "td" })).toBeInTheDocument();
     expect(screen.getByText("已托管")).toBeInTheDocument();
     expect(screen.getByText("启用")).toBeInTheDocument();
     expect(screen.getByText("2026-10-28 10:00")).toBeInTheDocument();
@@ -61,7 +62,8 @@ describe("UserListPage", () => {
 
     // jsdom 下 antd Select 不响应 user-event 点击开合，按 canonical 方式以 mouseDown 打开；
     // 选项文本在 content 子节点上，role 查询会命中 rc-select 的无障碍测量节点，故按类名取可见项。
-    fireEvent.mouseDown(screen.getByRole("combobox"));
+    // T7 操作列为每行加了角色 Select，页面出现多个 combobox；DOM 顺序上 Card extra 的团队筛选在前。
+    fireEvent.mouseDown(screen.getAllByRole("combobox")[0]);
     await user.click(await screen.findByText("acme", { selector: ".ant-select-item-option-content" }));
     // 选定团队 → URL 携带 tenant_id → 触发携带该参数的重新查询
     await waitFor(() => expect(getUserRequests("GET").at(-1)?.url).toContain("tenant_id=1"));
