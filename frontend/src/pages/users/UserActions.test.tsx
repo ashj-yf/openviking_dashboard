@@ -88,6 +88,28 @@ describe("UserActions", () => {
     // 放宽预算，断言不变（同 T4/T6）。
   }, 30000);
 
+  it("重置失败转成功后关闭弹窗，重开不残留上次的错误横幅", async () => {
+    const user = userEvent.setup();
+    await renderActions(admin(), makeUser({ id: 3 }));
+    // 注入必须在 renderActions 之后：resetUsersMock 会清空 actionError（同上）。
+    setUserActionError("POST", "reset-password", 500, { detail: "重置服务暂不可用" });
+
+    await user.click(screen.getByRole("button", { name: "重置密码" }));
+    await user.type(await screen.findByLabelText("新密码"), "Alice#202611");
+    await user.click(screen.getByRole("button", { name: "确认重置" }));
+    expect(await screen.findByText("重置服务暂不可用")).toBeInTheDocument();
+
+    // 修复注入后表单原值重提成功，弹窗关闭；重开不得再渲染陈旧错误。
+    resetUsersMock([]);
+    await user.click(screen.getByRole("button", { name: "确认重置" }));
+    expect(await screen.findByText(/已重置 alice 的登录密码/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByLabelText("新密码")).toBeNull());
+
+    await user.click(screen.getByRole("button", { name: "重置密码" }));
+    expect(await screen.findByRole("button", { name: "确认重置" })).toBeInTheDocument();
+    expect(screen.queryByText("重置服务暂不可用")).toBeNull();
+  }, 30000);
+
   it("停用需二次确认，发送 disable；启用直接发送 enable", async () => {
     const user = userEvent.setup();
     const view = await renderActions(admin(), makeUser({ id: 3, is_active: true }));

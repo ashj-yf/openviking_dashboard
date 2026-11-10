@@ -11,6 +11,7 @@ import {
   resetTenantsMock,
   setCreateError,
   setCreatedPayload,
+  setListError,
   setSyncReport,
 } from "@mocks/domains/tenants";
 
@@ -53,6 +54,21 @@ describe("TenantListPage", () => {
     expect(
       await screen.findByText("暂无数据", { selector: ".ant-empty-description" }),
     ).toBeInTheDocument();
+  });
+
+  it("列表查询失败时展示后端错误原文并可重试，重试成功后恢复列表", async () => {
+    const user = userEvent.setup();
+    // 注入须晚于 mock reset：beforeEach 的 resetTenantsMock 会清空 listError（同 CredentialsPage 先例）。
+    setListError(500, { detail: "数据库暂时不可用" });
+    renderAdmin();
+
+    expect(await screen.findByText("数据库暂时不可用")).toBeInTheDocument();
+
+    resetTenantsMock([makeTenant({ id: 1, account_id: "acme" })]);
+    await user.click(screen.getByRole("button", { name: "重试" }));
+
+    expect(await screen.findByText("acme")).toBeInTheDocument();
+    expect(screen.queryByText("数据库暂时不可用")).toBeNull();
   });
 
   it("搜索框输入后 300ms 防抖发 q 查询，不为每个字符发请求", async () => {

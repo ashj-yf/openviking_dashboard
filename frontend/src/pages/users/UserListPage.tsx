@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Card, Input, Select, Space, Table, Tag, Typography } from "antd";
+import { Alert, Button, Card, Input, Select, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -131,6 +131,20 @@ export function UserListPage() {
           </Space>
         }
       >
+        {/* 查询失败必须显式呈错，不能以空表假装成功；重试按钮复用同一查询。 */}
+        {usersQuery.isError && (
+          <Alert
+            type="error"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message={usersQuery.error.message}
+            action={
+              <Button size="small" danger onClick={() => usersQuery.refetch()}>
+                重试
+              </Button>
+            }
+          />
+        )}
         <Table
           rowKey="id"
           loading={usersQuery.isLoading}

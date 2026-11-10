@@ -5,7 +5,13 @@ import { AppRoutes } from "@/router/AppRoutes";
 import { makeMe, resetAuthMock } from "@mocks/domains/auth";
 import { resetHealthMock } from "@mocks/domains/health";
 import { resetTenantsMock } from "@mocks/domains/tenants";
-import { getUserRequests, makeUser, resetUsersMock, setProvisionError } from "@mocks/domains/users";
+import {
+  getUserRequests,
+  makeUser,
+  resetUsersMock,
+  setListError,
+  setProvisionError,
+} from "@mocks/domains/users";
 
 function renderAs(role: "admin" | "team_admin", route = "/users") {
   localStorage.setItem("ov-dashboard-token", role === "admin" ? "jwt-admin" : "jwt-boss");
@@ -89,6 +95,22 @@ describe("UserListPage", () => {
     renderAs("admin");
     expect(await screen.findByText("待签发")).toBeInTheDocument();
     expect(screen.queryByText("已托管")).toBeNull();
+  });
+
+  it("列表查询失败时展示后端错误原文并可重试，重试成功后恢复列表", async () => {
+    const user = userEvent.setup();
+    // 注入须晚于 mock reset：beforeEach 的 resetUsersMock 会清空 listError（同 CredentialsPage 先例）。
+    setListError(500, { detail: "数据库暂时不可用" });
+    renderAs("admin");
+
+    expect(await screen.findByText("数据库暂时不可用")).toBeInTheDocument();
+    expect(screen.queryByText("alice")).toBeNull();
+
+    resetUsersMock([makeUser({ username: "alice" })]);
+    await user.click(screen.getByRole("button", { name: "重试" }));
+
+    expect(await screen.findAllByText("alice")).not.toHaveLength(0);
+    expect(screen.queryByText("数据库暂时不可用")).toBeNull();
   });
 
   it("team_admin 开通模态锁定团队与角色：无选择器、显示团队名", async () => {

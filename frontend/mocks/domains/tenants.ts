@@ -54,6 +54,7 @@ export function makeTenantDetail(overrides: Partial<TenantDetail> = {}): TenantD
 }
 
 let rows: TenantListItem[] = [];
+let listError: { status: number; body: unknown } | null = null;
 let createError: { status: number; body: unknown } | null = null;
 let createdPayload: TenantCreated = {
   id: 1,
@@ -75,6 +76,7 @@ const captured: CapturedRequest[] = [];
 
 export function resetTenantsMock(list: TenantListItem[] | null = [makeTenant()]): void {
   rows = list === null ? [] : list;
+  listError = null;
   createError = null;
   captured.length = 0;
   createdPayload = {
@@ -91,6 +93,11 @@ export function resetTenantsMock(list: TenantListItem[] | null = [makeTenant()])
 
 export function setCreateError(status: number, body: unknown): void {
   createError = { status, body };
+}
+
+/** 注入 GET /tenants 列表错误（须在 resetTenantsMock 之后调用，reset 会清空）。 */
+export function setListError(status: number, body: unknown): void {
+  listError = { status, body };
 }
 
 export function setCreatedPayload(payload: TenantCreated): void {
@@ -114,6 +121,7 @@ export const tenantListHandlers: HttpHandler[] = [
   http.get("*/api/v1/tenants", ({ request }) => {
     // R7：保留 GET list 捕获，T4 搜索防抖用例依赖 getTenantRequests("GET")。
     captured.push({ method: "GET", url: request.url, body: null });
+    if (listError) return HttpResponse.json(listError.body as JsonValue, { status: listError.status });
     const q = new URL(request.url).searchParams.get("q")?.toLowerCase() ?? "";
     const filtered = q
       ? rows.filter(

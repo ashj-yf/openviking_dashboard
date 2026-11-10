@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Card, Input, Space, Table, Typography } from "antd";
+import { Alert, Button, Card, Input, Space, Table, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -21,7 +21,7 @@ export function TenantListPage() {
     return () => clearTimeout(timer);
   }, [draft]);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: qk.tenants(q),
     queryFn: () => tenantApi.list(q || undefined),
   });
@@ -83,6 +83,20 @@ export function TenantListPage() {
           </Space>
         }
       >
+        {/* 查询失败必须显式呈错，不能以空表假装成功；重试按钮复用同一查询。 */}
+        {isError && (
+          <Alert
+            type="error"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message={error.message}
+            action={
+              <Button size="small" danger onClick={() => refetch()}>
+                重试
+              </Button>
+            }
+          />
+        )}
         <Table
           rowKey="id"
           loading={isLoading}

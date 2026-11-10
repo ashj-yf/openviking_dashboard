@@ -20,6 +20,8 @@ export function ResetPasswordModal({ user }: { user: UserListItem }) {
       setOpen(false);
       form.resetFields();
       setRegenerate(false);
+      // 与 resetFields 同步清掉上次失败留下的错误横幅，重开弹窗不残留陈旧错误。
+      setTopError(null);
     },
     onError: (error) => {
       setTopError(error instanceof ApiError ? error.message : "重置失败，请稍后重试");

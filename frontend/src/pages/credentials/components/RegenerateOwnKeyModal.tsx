@@ -19,7 +19,11 @@ export function RegenerateOwnKeyModal({ open, pending, onCancel, onConfirm, load
       cancelText="取消"
       confirmLoading={loading}
       onOk={() => onConfirm(seed || undefined)}
-      onCancel={onCancel}
+      onCancel={() => {
+        // 取消后重开不得残留上次输入的 seed，否则隐形确定性重签（对齐 RegenerateKeyModal 范式）。
+        setSeed("");
+        onCancel();
+      }}
       destroyOnHidden
     >
       <Alert

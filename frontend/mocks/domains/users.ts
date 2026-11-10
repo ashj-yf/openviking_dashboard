@@ -46,6 +46,7 @@ export function makeSyncReport(overrides: Partial<UserSyncReport> = {}): UserSyn
 }
 
 let rows: UserOut[] = [];
+let listError: { status: number; body: unknown } | null = null;
 let provisionError: { status: number; body: unknown } | null = null;
 let actionError: { method: string; fragment: string; status: number; body: unknown } | null = null;
 let syncReport: UserSyncReport = makeSyncReport();
@@ -59,6 +60,7 @@ const captured: CapturedUserRequest[] = [];
 
 export function resetUsersMock(list: UserOut[] | null = [makeUser()]): void {
   rows = list === null ? [] : list;
+  listError = null;
   provisionError = null;
   actionError = null;
   captured.length = 0;
@@ -67,6 +69,11 @@ export function resetUsersMock(list: UserOut[] | null = [makeUser()]): void {
 
 export function setProvisionError(status: number, body: unknown): void {
   provisionError = { status, body };
+}
+
+/** 注入 GET /users 列表错误（须在 resetUsersMock 之后调用，reset 会清空）。 */
+export function setListError(status: number, body: unknown): void {
+  listError = { status, body };
 }
 
 export function setUserActionError(
@@ -108,6 +115,7 @@ export const userHandlers: HttpHandler[] = [
   http.get("*/api/v1/users", ({ request }) => {
     // R11：保留 GET list 捕获，筛选用例依赖 getUserRequests("GET")（同 tenants GET）。
     captured.push({ method: "GET", url: request.url, body: null });
+    if (listError) return HttpResponse.json(listError.body as JsonValue, { status: listError.status });
     const params = new URL(request.url).searchParams;
     const tenantId = params.get("tenant_id");
     const keyword = params.get("keyword")?.toLowerCase() ?? "";

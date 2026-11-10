@@ -30,9 +30,21 @@ export function makeMe(overrides: Partial<Me> = {}): Me {
 
 let me: Me | null = null;
 
+export interface CapturedAuthRequest {
+  method: string;
+  url: string;
+  body: unknown;
+}
+const captured: CapturedAuthRequest[] = [];
+
+export function getAuthRequests(method?: string): CapturedAuthRequest[] {
+  return method ? captured.filter((r) => r.method === method) : [...captured];
+}
+
 /** 每个测试 beforeEach 调用；传入 makeMe(...) 模拟已登录会话，null 模拟未登录。 */
 export function resetAuthMock(next: Me | null = null): void {
   me = next;
+  captured.length = 0;
 }
 
 function tokenFor(username: string): Token {
@@ -58,7 +70,8 @@ export const authHandlers: HttpHandler[] = [
     });
     return HttpResponse.json(tokenFor(body.username));
   }),
-  http.post("*/api/v1/auth/logout", () => {
+  http.post("*/api/v1/auth/logout", ({ request }) => {
+    captured.push({ method: "POST", url: request.url, body: null });
     me = null;
     return new HttpResponse(null, { status: 204 });
   }),

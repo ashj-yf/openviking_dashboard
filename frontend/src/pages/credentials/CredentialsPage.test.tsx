@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/utils";
 import { AppRoutes } from "@/router/AppRoutes";
 import { makeMe, resetAuthMock } from "@mocks/domains/auth";
@@ -108,6 +108,30 @@ describe("CredentialsPage", () => {
     expect(regenerated.body).toEqual({ seed: null });
     expect(await screen.findByText(ROTATED_CREDENTIAL_KEY)).toBeInTheDocument();
     expect(screen.getByText("旧 key 已失效，请重新配置所有设备")).toBeInTheDocument();
+  }, 30000);
+
+  it("自助重签取消后重开不残留上次输入的 seed，请求以空 seed 提交", async () => {
+    const user = userEvent.setup();
+    renderAliceAt();
+    await screen.findByText("ovk-a************wxyz");
+
+    await user.click(screen.getByRole("button", { name: /重签 Key/ }));
+    // 该 Modal 的 Seed Form.Item 未与控件关联（无 name），按弹窗内唯一 textbox 定位输入。
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByText("高级选项"));
+    await user.type(within(dialog).getByRole("textbox"), "stale-seed");
+    await user.click(within(dialog).getByRole("button", { name: "取消" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    // 重开后 Collapse 默认折叠，上次输入的 seed 若残留则不可见地随确认提交。
+    await user.click(screen.getByRole("button", { name: /重签 Key/ }));
+    await user.click(screen.getByRole("button", { name: "确认重签" }));
+
+    await waitFor(() =>
+      expect(getCredentialRequests("POST").some((r) => r.url.includes("regenerate"))).toBe(true),
+    );
+    const regenerated = getCredentialRequests("POST").find((r) => r.url.includes("regenerate"))!;
+    expect(regenerated.body).toEqual({ seed: null });
   }, 30000);
 
   it("未留存 key 时显示联系管理员空态，不出现显示/复制/重签按钮", async () => {
