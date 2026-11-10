@@ -1,7 +1,9 @@
 import { clearToken, getToken } from "@/auth/token-store";
-import type { Schema } from "@/types/api";
+import type { Paths } from "@/types/api";
 
-type HealthResponse = Schema["HealthResponse"];
+/** /healthz 响应体：真实后端未声明 response_model，类型取自契约快照的内联 schema。 */
+export type HealthResponse =
+  Paths["/healthz"]["get"]["responses"][200]["content"]["application/json"];
 
 const API_PREFIX = "/api/v1";
 const NETWORK_MESSAGE = "网络异常，请稍后重试";

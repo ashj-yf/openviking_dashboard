@@ -26,7 +26,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["HealthResponse"];
+                        "application/json": {
+                            /** @enum {string} */
+                            status: "ok" | "degraded";
+                            db: boolean;
+                            openviking: boolean;
+                            version?: string | null;
+                        };
                     };
                 };
             };
@@ -837,13 +843,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        HealthResponse: {
-            /** @enum {string} */
-            status: "ok" | "degraded";
-            db: boolean;
-            openviking: boolean;
-            version?: string | null;
-        };
         LoginRequest: {
             username: string;
             password: string;

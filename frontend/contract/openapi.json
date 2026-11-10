@@ -3,7 +3,7 @@
   "info": { "title": "OpenViking Dashboard", "version": "0.2.0-contract" },
   "paths": {
     "/healthz": {
-      "get": { "tags": ["system"], "responses": { "200": { "description": "健康状态", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HealthResponse" } } } } } }
+      "get": { "tags": ["system"], "responses": { "200": { "description": "健康状态", "content": { "application/json": { "schema": { "type": "object", "required": ["status", "db", "openviking"], "properties": { "status": { "type": "string", "enum": ["ok", "degraded"] }, "db": { "type": "boolean" }, "openviking": { "type": "boolean" }, "version": { "type": ["string", "null"] } } } } } } } }
     },
     "/api/v1/auth/login": {
       "post": {
@@ -123,15 +123,6 @@
   },
   "components": {
     "schemas": {
-      "HealthResponse": {
-        "type": "object", "required": ["status", "db", "openviking"],
-        "properties": {
-          "status": { "type": "string", "enum": ["ok", "degraded"] },
-          "db": { "type": "boolean" },
-          "openviking": { "type": "boolean" },
-          "version": { "type": ["string", "null"] }
-        }
-      },
       "LoginRequest": {
         "type": "object", "required": ["username", "password"],
         "properties": { "username": { "type": "string" }, "password": { "type": "string" } }
