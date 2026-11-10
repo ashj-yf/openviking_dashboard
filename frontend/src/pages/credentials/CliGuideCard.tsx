@@ -1,6 +1,7 @@
 import { Alert, App, Button, Card, Typography } from "antd";
 import { CopyOutlined } from "@ant-design/icons";
 import { useState } from "react";
+import { ApiError } from "@/api/client";
 import { credentialApi } from "@/api/credentials";
 
 interface Props {
@@ -21,11 +22,16 @@ export function CliGuideCard({ endpoint, hasKey }: Props) {
     setBusy(true);
     try {
       const revealed = await credentialApi.copyKey();
-      const config = JSON.stringify({ url: endpoint, api_key: revealed.key }, null, 2);
-      await navigator.clipboard.writeText(config);
-      message.success("已复制完整配置，粘贴到 ~/.openviking/ovcli.conf 即可");
-    } catch {
-      message.error("复制失败，请手动选择文本复制");
+      try {
+        const config = JSON.stringify({ url: endpoint, api_key: revealed.key }, null, 2);
+        await navigator.clipboard.writeText(config);
+        message.success("已复制完整配置，粘贴到 ~/.openviking/ovcli.conf 即可");
+      } catch {
+        message.error("复制失败，请手动选择文本复制");
+      }
+    } catch (error) {
+      // 业务错误文案来自后端：{detail} 原样展示（同 CredentialsPage copyKey 范式）。
+      message.error(error instanceof ApiError ? error.message : "获取明文失败");
     } finally {
       setBusy(false);
     }

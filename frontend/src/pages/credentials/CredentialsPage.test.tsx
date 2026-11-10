@@ -12,6 +12,7 @@ import {
   getCredentialRequests,
   makeCredential,
   resetCredentialsMock,
+  setCredentialError,
 } from "@mocks/domains/credentials";
 
 // 可选注入凭证视图：默认 makeCredential()；空态用例传 has_key:false 夹具，
@@ -143,6 +144,21 @@ describe("CredentialsPage", () => {
       url: "https://ov.example.com",
       api_key: PLAIN_CREDENTIAL_KEY,
     });
+  }, 30000);
+
+  it("复制完整配置遇后端业务错误时展示 detail 原文而非本地兜底文案", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    stubClipboard(writeText);
+    renderAliceAt();
+    await screen.findByText("ovk-a************wxyz");
+    // 注入须在 renderAliceAt 之后：resetCredentialsMock 会清空 actionError。
+    setCredentialError("copy", 409, { detail: "key 已被重签，请刷新后重试" });
+
+    await user.click(screen.getByRole("button", { name: /复制完整配置/ }));
+    expect(await screen.findByText("key 已被重签，请刷新后重试")).toBeInTheDocument();
+    expect(screen.queryByText("复制失败，请手动选择文本复制")).toBeNull();
+    expect(writeText).not.toHaveBeenCalled();
   }, 30000);
 
   it("密钥泄漏扫描：列表页与未揭示的凭证页任何位置都不含明文 key", async () => {
