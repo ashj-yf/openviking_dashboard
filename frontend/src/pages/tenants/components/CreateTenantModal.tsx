@@ -110,7 +110,7 @@ export function CreateTenantModal({ open, onClose }: Props) {
           <Input.TextArea maxLength={500} rows={2} />
         </Form.Item>
         <Collapse
-          destroyInactivePanel
+          destroyOnHidden
           items={[
             {
               key: "advanced",

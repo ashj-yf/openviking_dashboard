@@ -14,6 +14,7 @@ import { NotFoundPage } from "@/pages/errors/NotFoundPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { TenantDetailPage } from "@/pages/tenants/TenantDetailPage";
 import { TenantListPage } from "@/pages/tenants/TenantListPage";
+import { UserListPage } from "@/pages/users/UserListPage";
 import { getToken } from "@/auth/token-store";
 
 /** 监听 401 事件，统一跳登录（Api client 已在此前清除 token）。 */
@@ -116,8 +117,15 @@ export function AppRoutes() {
                     </RequireRole>
                   }
                 />
-                {/* 落地占位：T6/T8 分别替换为带 RequireRole 的真实页面 */}
-                <Route path="/users" element={<PlaceholderPage title="用户管理" />} />
+                {/* 落地占位：T8 替换为带 RequireRole 的真实页面 */}
+                <Route
+                  path="/users"
+                  element={
+                    <RequireRole allow={["admin", "team_admin"]}>
+                      <UserListPage />
+                    </RequireRole>
+                  }
+                />
                 <Route path="/credentials" element={<PlaceholderPage title="我的凭证" />} />
                 <Route path="/403" element={<ForbiddenPage />} />
                 <Route path="*" element={<NotFoundPage />} />
