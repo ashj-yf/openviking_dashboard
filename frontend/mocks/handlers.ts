@@ -1,5 +1,6 @@
 import type { HttpHandler } from "msw";
 import { authHandlers } from "./domains/auth";
+import { credentialHandlers } from "./domains/credentials";
 import { healthHandlers } from "./domains/health";
 import { tenantListHandlers } from "./domains/tenants";
 import { userHandlers } from "./domains/users";
@@ -9,4 +10,5 @@ export const handlers: HttpHandler[] = [
   ...healthHandlers,
   ...tenantListHandlers,
   ...userHandlers,
+  ...credentialHandlers,
 ];
