@@ -48,7 +48,7 @@ export function EditTenantModal({ open, tenant, onClose }: Props) {
       confirmLoading={mutation.isPending}
       onOk={() => form.submit()}
       onCancel={onClose}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form form={form} layout="vertical" onFinish={(values) => mutation.mutate(values)}>
         <Form.Item label="显示名" name="display_name" rules={[{ max: 128 }]}>
