@@ -82,3 +82,74 @@ async def test_migration_on_fresh_db_is_noop(engine):
         applied = await conn.run_sync(apply_schema_upgrades)
         assert not any("ADD COLUMN" in action for action in applied)
         assert "uq_dashboard_users_ldap_username" in await conn.run_sync(_index_names)
+
+
+_NULLABLE_PASSWORD_HASH_INSERT_SQL = (
+    "INSERT INTO dashboard_users (username, password_hash, role, is_active, "
+    "must_change_password) VALUES (:username, :password_hash, 'user', 1, 0)"
+)
+
+
+def test_migration_rebuilds_legacy_table_to_nullable_password_hash(tmp_path):
+    """password_hash 仍为 NOT NULL 的存量库：迁移按模型重建表解除非空约束。
+
+    旧行数据必须保全（字段值原样、auth_source 回填 local），新表须允许
+    password_hash 为 NULL（绑定迁移语义），且 username 唯一约束仍生效。
+    """
+    legacy_hash = "x" * 60
+    legacy_engine = create_engine(f"sqlite:///{tmp_path / 'legacy.db'}")
+    with legacy_engine.begin() as conn:
+        conn.execute(text(_LEGACY_CREATE_SQL))
+        conn.execute(
+            text(_LEGACY_INSERT_SQL),
+            {"username": "legacy_user", "password_hash": legacy_hash, "role": "user"},
+        )
+    legacy_engine.dispose()
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'legacy.db'}")
+    with engine.begin() as conn:
+        applied = apply_schema_upgrades(conn)
+        assert any("rebuild" in action for action in applied)
+
+        # 重建后的表与模型零漂移：password_hash 可空（与模型列定义一致）
+        columns = {c["name"]: c["nullable"] for c in inspect(conn).get_columns("dashboard_users")}
+        assert columns["password_hash"] is True
+
+        # 旧行数据保全：字段值原样、auth_source 按 ADD COLUMN 默认值回填 local
+        row = conn.execute(text(
+            "SELECT username, role, is_active, auth_source, password_hash "
+            "FROM dashboard_users WHERE username = 'legacy_user'"
+        )).one()
+        assert row.username == "legacy_user" and row.role == "user"
+        assert row.is_active == 1 and row.auth_source == "local"
+        assert row.password_hash == legacy_hash
+
+        # 新表允许 password_hash 为 NULL 的行（LDAP 绑定后的形态）
+        conn.execute(
+            text(_NULLABLE_PASSWORD_HASH_INSERT_SQL),
+            {"username": "bound_user", "password_hash": None},
+        )
+    engine.dispose()
+
+    # username 唯一约束在重建后仍生效（独立事务：SQLite 驱动对 DDL 隐式提交，
+    # 事务中途 rollback 会让迁移的 DDL 部分提交、DML 部分回滚）
+    engine = create_engine(f"sqlite:///{tmp_path / 'legacy.db'}")
+    with engine.begin() as conn:
+        try:
+            conn.execute(
+                text(_NULLABLE_PASSWORD_HASH_INSERT_SQL),
+                {"username": "legacy_user", "password_hash": "y" * 60},
+            )
+        except IntegrityError:
+            conn.rollback()
+        else:
+            raise AssertionError("重复 username 未触发唯一约束")
+    engine.dispose()
+
+    # 幂等：第二次迁移不再重建
+    engine = create_engine(f"sqlite:///{tmp_path / 'legacy.db'}")
+    with engine.begin() as conn:
+        applied_again = apply_schema_upgrades(conn)
+        assert not any("rebuild" in action for action in applied_again)
+        assert not any("ADD COLUMN" in action for action in applied_again)
+    engine.dispose()

@@ -4,8 +4,10 @@
 不会改动已存在的表，因此这里只负责给旧库补上后续版本新增的列和索引。
 每个动作都先探测、后执行，幂等可重复；返回已应用的动作名供启动日志记录。
 """
-from sqlalchemy import inspect, text
+from sqlalchemy import MetaData, inspect, text
 from sqlalchemy.engine import Connection
+
+from app.models import DashboardUser
 
 # dashboard_users 首版之后新增的列：列名 -> ALTER TABLE 用的列定义片段
 # （须与 DashboardUser 模型上的列定义保持一致）
@@ -23,8 +25,9 @@ _LDAP_USERNAME_INDEX = "uq_dashboard_users_ldap_username"
 def apply_schema_upgrades(sync_conn: Connection) -> list[str]:
     """对既有库做增量 schema 升级，返回已应用的动作名列表。
 
-    缺失列逐条 ALTER TABLE 补齐；LDAP 用户名唯一索引用 IF NOT EXISTS 保证
-    幂等。ldap_config 等新表交给 create_all，此处不处理。
+    缺失列逐条 ALTER TABLE 补齐；password_hash 仍为 NOT NULL 的存量表按模型
+    整表重建以解除非空约束（SQLite 无 ALTER MODIFY）；LDAP 用户名唯一索引用
+    IF NOT EXISTS 保证幂等。ldap_config 等新表交给 create_all，此处不处理。
     """
     applied: list[str] = []
     inspector = inspect(sync_conn)
@@ -37,6 +40,10 @@ def apply_schema_upgrades(sync_conn: Connection) -> list[str]:
         )
         applied.append(f"dashboard_users: ADD COLUMN {name}")
 
+    if _password_hash_is_not_null(sync_conn):
+        _rebuild_dashboard_users_table(sync_conn)
+        applied.append("dashboard_users: rebuild table (password_hash → nullable)")
+
     existing_indexes = {ix["name"] for ix in inspector.get_indexes("dashboard_users")}
     if _LDAP_USERNAME_INDEX not in existing_indexes:
         sync_conn.execute(
@@ -47,3 +54,51 @@ def apply_schema_upgrades(sync_conn: Connection) -> list[str]:
         )
         applied.append(f"dashboard_users: CREATE UNIQUE INDEX {_LDAP_USERNAME_INDEX}")
     return applied
+
+
+def _password_hash_is_not_null(sync_conn: Connection) -> bool:
+    """存量表 password_hash 是否仍带 NOT NULL（模型已改 nullable，重建以解除）。"""
+    for col in inspect(sync_conn).get_columns("dashboard_users"):
+        if col["name"] == "password_hash":
+            return not bool(col.get("nullable", True))
+    return False
+
+
+def _rebuild_dashboard_users_table(sync_conn: Connection) -> None:
+    """按当前模型重建 dashboard_users：新表 DDL 由模型编译生成，保证零漂移。
+
+    SQLite 无 ALTER MODIFY，只能整表重建：建 dashboard_users_new → 按"共有
+    列名"对齐搬运数据（模型有而旧表还没有的列，由新表列默认值兜底）→
+    DROP 旧表 → RENAME 回原名 → 按模型逐个重建索引（DROP 会连带丢掉
+    username/tenant_id 普通索引与 ldap_username 唯一索引，必须补回；随后的
+    唯一索引 IF NOT EXISTS 步骤照常幂等）。
+    """
+    from sqlalchemy import Column, Integer, Table
+    from sqlalchemy.schema import CreateTable
+    from sqlalchemy.dialects import sqlite
+
+    table = DashboardUser.__table__
+    existing = {col["name"] for col in inspect(sync_conn).get_columns("dashboard_users")}
+    shared = [col.name for col in table.columns if col.name in existing]
+
+    # 新表拷进临时 metadata；放一个最小 tenants 影子表，供 tenant_id 外键在
+    # DDL 编译时解析引用目标（不会创建影子表，仅影响编译出的 REFERENCES 文本）
+    tmp_metadata = MetaData()
+    Table("tenants", tmp_metadata, Column("id", Integer, primary_key=True))
+    new_table = table.to_metadata(tmp_metadata, name=f"{table.name}_new")
+    # SQLite 驱动对 DDL 隐式提交：若上次重建中途被打断，可能残留 _new 表，
+    # 先行清除保证重建可重入
+    sync_conn.execute(text("DROP TABLE IF EXISTS dashboard_users_new"))
+    sync_conn.execute(text(str(CreateTable(new_table).compile(dialect=sqlite.dialect()))))
+    column_list = ", ".join(shared)
+    sync_conn.execute(
+        text(
+            f"INSERT INTO dashboard_users_new ({column_list}) "
+            f"SELECT {column_list} FROM dashboard_users"
+        )
+    )
+    sync_conn.execute(text("DROP TABLE dashboard_users"))
+    sync_conn.execute(text("ALTER TABLE dashboard_users_new RENAME TO dashboard_users"))
+    # DROP 旧表连带丢掉其全部索引：按模型逐个补回（含 ldap_username 唯一索引）
+    for index in sorted(table.indexes, key=lambda ix: ix.name or ""):
+        index.create(sync_conn)
