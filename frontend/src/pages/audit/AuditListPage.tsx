@@ -254,7 +254,12 @@ export function AuditListPage() {
   const [activeKey, setActiveKey] = useState("local");
   // OV Tab 仅 admin：后端对 team_admin 403，前端不渲染该 Tab 是体验层双保险。
   const items = [
-    { key: "local", label: "本平台审计", children: <LocalAuditSection /> },
+    {
+      key: "local",
+      // team_admin 的数据经后端强制收窄为本团队（AUD-3），标签按角色呈现避免「全平台」误判。
+      label: me?.role === "admin" ? "本平台审计" : "本团队审计",
+      children: <LocalAuditSection />,
+    },
     ...(me?.role === "admin"
       ? [{ key: "ov", label: "OV 审计", children: <OvAuditSection /> }]
       : []),

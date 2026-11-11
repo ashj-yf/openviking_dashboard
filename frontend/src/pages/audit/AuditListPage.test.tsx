@@ -4,6 +4,7 @@ import { AppRoutes } from "@/router/AppRoutes";
 import { makeMe, resetAuthMock } from "@mocks/domains/auth";
 import { resetHealthMock } from "@mocks/domains/health";
 import {
+
   getAuditRequests,
   makeAuditLog,
   resetAuditMock,
@@ -12,6 +13,9 @@ import {
   setOvAuditPayload,
 } from "@mocks/domains/audit";
 import type { AuditLog } from "@/api/audit";
+
+// RangePicker 输入按本地时区 parse；固定 UTC 使断言与时区无关（本文件其余断言均为 UTC 字面串，不受影响）。
+process.env.TZ = "UTC";
 
 // AppLayout 头部会渲染当前登录用户名（默认 admin），行内操作人避免同名造成多匹配。
 function renderAt(role: "admin" | "team_admin") {
@@ -132,6 +136,32 @@ describe("AuditListPage", () => {
     expect(screen.queryByText("auth.login.success")).toBeNull();
   });
 
+  it("时间范围提交后请求携带 start/end（ISO UTC）", async () => {
+    renderAdmin();
+    await screen.findByText("tenant.create");
+
+    // rc-picker 受控输入：两个输入框填文本后逐个 Enter 触发解析与 onChange，
+    // 再经「查询」按钮把 draftRange 以 toISOString() 提交（终审 Minor-2 链路钉）。
+    const inputs = document.querySelectorAll<HTMLInputElement>(
+      ".ant-picker-range .ant-picker-input > input",
+    );
+    fireEvent.focus(inputs[0]!);
+    fireEvent.change(inputs[0]!, { target: { value: "2026-01-01 08:00:00" } });
+    fireEvent.keyDown(inputs[0]!, { key: "Enter", keyCode: 13 });
+    fireEvent.focus(inputs[1]!);
+    fireEvent.change(inputs[1]!, { target: { value: "2026-01-02 09:00:00" } });
+    fireEvent.keyDown(inputs[1]!, { key: "Enter", keyCode: 13 });
+    fireEvent.click(screen.getByRole("button", { name: "查询" }));
+
+    await waitFor(() => {
+      const last = getAuditRequests("GET").at(-1);
+      expect(last).toBeDefined();
+      const search = new URL(last!.url).searchParams;
+      expect(search.get("start")).toBe("2026-01-01T08:00:00.000Z");
+      expect(search.get("end")).toBe("2026-01-02T09:00:00.000Z");
+    });
+  });
+
   it("受控分页：切到第 2 页请求携带 page=2 并渲染第二页数据", async () => {
     resetAuditMock(pagedRows(25));
     renderAdmin();
@@ -153,7 +183,9 @@ describe("AuditListPage", () => {
     renderTeamAdmin();
 
     expect(await screen.findByText("tenant.create")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "本平台审计" })).toBeInTheDocument();
+    // team_admin 数据为本团队收窄视图（AUD-3），标签不再是「本平台审计」。
+    expect(screen.getByRole("tab", { name: "本团队审计" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "本平台审计" })).toBeNull();
     expect(screen.queryByRole("tab", { name: "OV 审计" })).toBeNull();
   });
 
@@ -164,6 +196,7 @@ describe("AuditListPage", () => {
     setOvAuditPayload({ total: 1, items: [{ ts: "2026-11-01T00:00:00Z", actor: "ovadmin", action: "vm.create" }] });
     fireEvent.click(screen.getByRole("tab", { name: "OV 审计" }));
 
+    expect(screen.getByRole("tab", { name: "本平台审计" })).toBeInTheDocument();
     expect(await screen.findByText(/"actor": "ovadmin"/)).toBeInTheDocument();
     expect(screen.getByText("OV 侧审计原始数据，字段随真机抓包固化")).toBeInTheDocument();
 
