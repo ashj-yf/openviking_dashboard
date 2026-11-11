@@ -82,6 +82,13 @@ async def get_current_user(
             "认证令牌无效或已过期",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if payload.get("purpose") is not None:
+        # bind_token 等带 purpose 的专用短时令牌不得反向充当会话凭据（AUTH-10）
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "认证令牌无效或已过期",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     user = (
         await db.scalars(

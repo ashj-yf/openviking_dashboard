@@ -286,6 +286,15 @@ async def test_bind_replay_after_success_409(client, make_user, db, ldap_cfg, fa
     assert replay.json()["detail"] == "该账号已绑定 LDAP"
 
 
+async def test_bind_token_rejected_as_session_token(client, make_user):
+    """bind_token 不得反向充当会话令牌（AUTH-10）：purpose 非空令牌打受保护接口一律 401。"""
+    user = await make_user(username="vera", password="Admin#12345", role="user")
+    headers = {"Authorization": f"Bearer {issue_bind_token(user.id)}"}
+    resp = await client.get("/api/v1/auth/me", headers=headers)
+    assert resp.status_code == 401
+    assert resp.json()["detail"] == "认证令牌无效或已过期"
+
+
 async def test_bind_token_expired_401(client, make_user, ldap_cfg, fake_ldap):
     fake_ldap.users["mia"] = FakeUser("uid=mia,ou=people,dc=test", "pw-3", "m3@t", "Mia")
     user = await make_user(username="mia", password="Admin#12345", role="user")
