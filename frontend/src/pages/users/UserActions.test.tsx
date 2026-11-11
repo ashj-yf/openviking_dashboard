@@ -1,10 +1,10 @@
 import userEvent from "@testing-library/user-event";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/utils";
 import { UserActions } from "@/pages/users/components/UserActions";
 import { makeMe, resetAuthMock } from "@mocks/domains/auth";
 import { resetHealthMock } from "@mocks/domains/health";
-import { resetTenantsMock } from "@mocks/domains/tenants";
+import { makeTenant, resetTenantsMock } from "@mocks/domains/tenants";
 import {
   getUserRequests,
   makeSyncReport,
@@ -15,12 +15,35 @@ import {
 } from "@mocks/domains/users";
 import type { UserListItem } from "@/api/users";
 
-async function renderActions(actor: ReturnType<typeof makeMe>, user: UserListItem) {
+/** 未开通 JIT 行工厂：LDAP 自动建档、无团队归属与 OV 身份（auth_source=ldap && tenant_id==null）。 */
+function makeJitUser(overrides: Partial<UserListItem> = {}): UserListItem {
+  return makeUser({
+    id: 21,
+    username: "ldapguy",
+    role: "user",
+    auth_source: "ldap",
+    tenant_id: null,
+    account_id: null,
+    ov_user_id: null,
+    ov_role: null,
+    has_key: false,
+    key_state: "pending",
+    key_synced_at: null,
+    ...overrides,
+  });
+}
+
+async function renderActions(
+  actor: ReturnType<typeof makeMe>,
+  user: UserListItem,
+  tenants: ReturnType<typeof makeTenant>[] | null = [],
+  users: UserListItem[] = [],
+) {
   localStorage.setItem("ov-dashboard-token", `jwt-${actor.username}`);
   resetAuthMock(actor);
   resetHealthMock();
-  resetTenantsMock([]);
-  resetUsersMock([]);
+  resetTenantsMock(tenants);
+  resetUsersMock(users);
   const view = renderWithProviders(<UserActions user={user} />);
   // 等 /me 引导完成，避免在 me=null 的禁用初态上点击
   await screen.findByTestId("user-actions");
@@ -192,4 +215,70 @@ describe("UserActions", () => {
     expect(await screen.findByText("OpenViking 侧存在")).toBeInTheDocument();
     expect(screen.getByText("不一致")).toBeInTheDocument();
   });
+
+  it("test_reset_password_hidden_for_ldap_source_row", async () => {
+    await renderActions(admin(), makeUser({ id: 3, username: "alice", auth_source: "ldap" }));
+
+    // LDAP 用户口令由目录统一管理：无重置密码入口（后端 400 兜底）
+    expect(screen.queryByRole("button", { name: "重置密码" })).toBeNull();
+    // 停用/角色/销户照旧不受影响
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
+    expect(screen.getByRole("switch")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "销户" })).toBeInTheDocument();
+  });
+
+  it("test_reset_password_visible_for_local_row", async () => {
+    await renderActions(admin(), makeUser({ id: 3, username: "alice", auth_source: "local" }));
+
+    expect(screen.getByRole("button", { name: "重置密码" })).toBeInTheDocument();
+  });
+
+  it("test_provision_action_shown_for_unprovisioned_jit_admin_only", async () => {
+    const jit = makeJitUser();
+
+    // admin：未开通 JIT 行出现开通入口；重置密码/重签密钥/校准不适用
+    const adminView = await renderActions(admin(), jit);
+    expect(screen.getByRole("button", { name: "开通账号" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "重置密码" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "重签密钥" })).toBeNull();
+    adminView.unmount();
+
+    // team_admin：开通仅平台 admin 可见（JIT 行无团队归属，team_admin 视角无此入口）
+    await renderActions(teamAdmin(), jit);
+    expect(screen.queryByRole("button", { name: "开通账号" })).toBeNull();
+  });
+
+  it("test_provision_modal_submits_and_closes", async () => {
+    const user = userEvent.setup();
+    // JIT 行须同时进 mock store：provision 落库语义按 id patch 行，缺行会 404（对齐后端）
+    const jit = makeJitUser();
+    await renderActions(admin(), jit, [makeTenant()], [jit]);
+    await user.click(screen.getByRole("button", { name: "开通账号" }));
+
+    expect(await screen.findByText("开通 LDAP 用户")).toBeInTheDocument();
+    expect(screen.getByText("ldapguy")).toBeInTheDocument();
+
+    const dialog = screen.getByRole("dialog");
+    // 团队列表在弹窗打开时才拉取：先等 Select 的 loading 图标消失（数据入缓存），
+    // 再同步 mouseDown+点击选中——开合与点击之间插入 await 会被 rc-motion 收起（同 UserListPage 配方）。
+    await waitFor(() =>
+      expect(dialog.querySelector(".ant-select-arrow .anticon-loading")).toBeNull(),
+    );
+    fireEvent.mouseDown(within(dialog).getByRole("combobox"));
+    fireEvent.click(screen.getByText("acme", { selector: ".ant-select-item-option-content" }));
+    await user.click(within(dialog).getByText("团队管理员"));
+    await user.type(within(dialog).getByLabelText("OV 用户 ID"), "ldapguy-ov");
+    await user.click(within(dialog).getByRole("button", { name: "开通" }));
+
+    expect(await screen.findByText(/ldapguy 开通成功/)).toBeInTheDocument();
+    const post = getUserRequests("POST")[0];
+    expect(post.url).toContain("/users/21/provision");
+    expect(post.body).toEqual({
+      tenant_id: 1,
+      role: "team_admin",
+      ov_user_id: "ldapguy-ov",
+    });
+    // 成功后弹窗关闭
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  }, 30000);
 });

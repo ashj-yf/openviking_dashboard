@@ -13,12 +13,26 @@ import {
   setProvisionError,
 } from "@mocks/domains/users";
 
-function renderAs(role: "admin" | "team_admin", route = "/users") {
+function renderAs(
+  role: "admin" | "team_admin",
+  route = "/users",
+  meOverrides: Partial<ReturnType<typeof makeMe>> = {},
+) {
   localStorage.setItem("ov-dashboard-token", role === "admin" ? "jwt-admin" : "jwt-boss");
   resetAuthMock(
     role === "admin"
-      ? makeMe({ role: "admin" })
-      : makeMe({ id: 5, username: "boss", role: "team_admin", tenant_id: 1, account_id: "acme", ov_user_id: "boss", ov_role: "admin", has_ov_key: true }),
+      ? makeMe({ role: "admin", ...meOverrides })
+      : makeMe({
+          id: 5,
+          username: "boss",
+          role: "team_admin",
+          tenant_id: 1,
+          account_id: "acme",
+          ov_user_id: "boss",
+          ov_role: "admin",
+          has_ov_key: true,
+          ...meOverrides,
+        }),
   );
   resetHealthMock();
   resetTenantsMock();
@@ -272,4 +286,57 @@ describe("UserListPage", () => {
     // antd Form 在 jsdom 下逐键校验定时器会被 user-event 的 act 包装逐键等待，交互用例较慢，
     // 放宽预算，断言不变（同 T4）。
   }, 30000);
+
+  it("test_create_button_hidden_when_ldap_enabled", async () => {
+    // LDAP 模式下创建入口整体隐藏：本地创建与 LDAP 单源互斥（admin 与 team_admin 都看不到）
+    const { unmount } = renderAs("admin", "/users", { ldap_enabled: true });
+    await screen.findAllByText("alice");
+    expect(screen.queryByRole("button", { name: "开通用户" })).toBeNull();
+    unmount();
+
+    renderAs("team_admin", "/users", { ldap_enabled: true });
+    await screen.findAllByText("alice");
+    expect(screen.queryByRole("button", { name: "开通用户" })).toBeNull();
+  });
+
+  it("test_create_button_visible_local_mode", async () => {
+    const { unmount } = renderAs("admin");
+    await screen.findAllByText("alice");
+    expect(screen.getByRole("button", { name: "开通用户" })).toBeInTheDocument();
+    unmount();
+
+    renderAs("team_admin");
+    await screen.findAllByText("alice");
+    expect(screen.getByRole("button", { name: "开通用户" })).toBeInTheDocument();
+  });
+
+  it("未开通 JIT 行以 Tag 标识且不显示启用/停用", async () => {
+    resetUsersMock([
+      makeUser({
+        username: "jitguy",
+        auth_source: "ldap",
+        tenant_id: null,
+        account_id: null,
+        ov_user_id: null,
+        ov_role: null,
+        has_key: false,
+        key_state: "pending",
+        is_active: true,
+      }),
+    ]);
+    const { unmount } = renderAs("admin");
+
+    expect(await screen.findByText("jitguy")).toBeInTheDocument();
+    expect(screen.getByText("未开通")).toBeInTheDocument();
+    expect(screen.queryByText("启用")).toBeNull();
+    expect(screen.queryByText("停用")).toBeNull();
+    unmount();
+
+    // 已开通行不受影响（回归：本地行仍显示启用）
+    resetUsersMock([makeUser({ username: "alice", is_active: true })]);
+    renderAs("admin");
+    expect(await screen.findAllByText("alice")).not.toHaveLength(0);
+    expect(screen.getByText("启用")).toBeInTheDocument();
+    expect(screen.queryByText("未开通")).toBeNull();
+  });
 });

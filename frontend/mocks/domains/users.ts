@@ -225,6 +225,29 @@ export const userHandlers: HttpHandler[] = [
     rows = rows.filter((u) => u.id !== Number(params.id));
     return new HttpResponse(null, { status: 204 });
   }),
+  http.post("*/api/v1/users/:id/provision", async ({ params, request }) => {
+    // LDAP JIT 开通：落团队归属并注册 OV、签发 key；ov_user_id 缺省回退登录名（对齐后端语义）。
+    const body = (await request.json()) as Schema["UserProvisionRequest"];
+    captured.push({ method: "POST", url: request.url, body });
+    const error = maybeActionError("POST", "/provision");
+    if (error) return error;
+    const target = rows.find((u) => u.id === Number(params.id));
+    const updated = patchRow(Number(params.id), {
+      tenant_id: body.tenant_id,
+      account_id: "acme",
+      role: body.role === "team_admin" ? "team_admin" : "user",
+      ov_role: body.role === "team_admin" ? "admin" : "user",
+      ov_user_id: body.ov_user_id ?? target?.username ?? null,
+      is_active: true,
+      must_change_password: false,
+      has_key: true,
+      key_state: "current",
+      key_synced_at: "2026-10-29T10:00:00Z",
+    });
+    return updated
+      ? HttpResponse.json(updated)
+      : HttpResponse.json({ detail: "用户不存在" }, { status: 404 });
+  }),
   http.post("*/api/v1/users/:id/sync", async ({ request }) => {
     captured.push({ method: "POST", url: request.url, body: null });
     return HttpResponse.json(syncReport);
