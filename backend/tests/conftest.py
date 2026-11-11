@@ -4,6 +4,7 @@ import os
 import pathlib
 import secrets
 import tempfile
+import warnings
 from collections.abc import AsyncGenerator
 
 _TMP_DIR = pathlib.Path(tempfile.mkdtemp(prefix="ovdash-test-"))
@@ -36,6 +37,20 @@ from app.core.security import hash_password
 from app.main import create_app
 from app.models import Base, DashboardUser, Tenant
 from app.services.openviking.client import reset_test_transport, set_test_transport
+from starlette.exceptions import StarletteDeprecationWarning
+
+# 收集期放行：pytest CLI -W error 不受 pyproject ini filterwarnings 约束，
+# 而 starlette 1.10 在收集期 import test_static_spa.py 时就会发出 TestClient
+# 弃用告警，导致收集直接报错。pytest 9 会在收集期的 catch_warnings 上下文里
+# 把 CLI -W 过滤器重新压到过滤链最顶端，模块顶层的 filterwarnings 会被盖住，
+# 因此必须挂在 pytest_collection 钩子里（钩子运行在应用 CLI 过滤器之后）；
+# 测试执行期仍由 ini 的 ignore 规则管控。
+warnings.filterwarnings("ignore", category=StarletteDeprecationWarning)
+
+
+@pytest.hookimpl
+def pytest_collection() -> None:
+    warnings.filterwarnings("ignore", category=StarletteDeprecationWarning)
 
 
 @pytest_asyncio.fixture
@@ -181,3 +196,85 @@ def auth_headers():
         return {"Authorization": f"Bearer {issue_token(user)}"}
 
     return _make
+
+
+class FakeUser:
+    """fake_ldap 的目录用户：DN、密码与展示属性。"""
+
+    def __init__(self, dn: str, password: str, mail: str, display: str) -> None:
+        self.dn = dn
+        self.password = password
+        self.mail = mail
+        self.display = display
+
+
+@pytest.fixture
+def fake_ldap(monkeypatch):
+    """LDAP 接缝假件：替换 ldap_service 两个同步接缝函数（B2/B3/B4 复用）。
+
+    - users：用户名 -> FakeUser；fail_connect/fail_search/fail_verify 逐级注入失败；
+    - search_calls/verify_calls 记录接缝调用，供测试断言两级 bind 的先后与参数。
+    """
+    from app.services import ldap_service
+
+    class _Controller:
+        def __init__(self) -> None:
+            self.users: dict[str, FakeUser] = {}
+            self.fail_connect = False
+            self.fail_search = False
+            self.fail_verify = False
+            self.search_calls: list[dict] = []
+            self.verify_calls: list[dict] = []
+
+        def _search(self, cfg, username: str):
+            self.search_calls.append({"username": username})
+            if self.fail_connect:
+                raise ldap_service.LdapUnavailableError("LDAP 服务不可用，请联系管理员")
+            if self.fail_search:
+                raise ldap_service.LdapError("search", "LDAP 用户搜索失败（fake）")
+            user = self.users.get(username)
+            if user is None:
+                raise ldap_service.LdapError("search", "未在 LDAP 中找到该用户（fake）")
+            return user.dn, {
+                "uid": username,
+                "mail": user.mail,
+                "display_name": user.display,
+            }
+
+        def _verify(self, cfg, user_dn: str, password: str) -> None:
+            self.verify_calls.append({"dn": user_dn, "password": password})
+            if self.fail_verify:
+                raise ldap_service.LdapError("auth", "LDAP 账号或密码错误（fake）")
+            matched = next((u for u in self.users.values() if u.dn == user_dn), None)
+            if matched is None or matched.password != password:
+                raise ldap_service.LdapError("auth", "LDAP 账号或密码错误（fake）")
+
+    controller = _Controller()
+    monkeypatch.setattr(ldap_service, "_search_user_sync", controller._search)
+    monkeypatch.setattr(ldap_service, "_verify_password_sync", controller._verify)
+    return controller
+
+
+@pytest_asyncio.fixture
+async def ldap_cfg(db):
+    """预置一行启用中的 LDAP 配置（id=1 单例行），host ldap.test、port 389。"""
+    from app.models import LdapConfig
+
+    row = LdapConfig(
+        id=1,
+        enabled=True,
+        server_host="ldap.test",
+        server_port=389,
+        encryption="none",
+        bind_dn="cn=svc,dc=test",
+        bind_password_enc=encrypt_secret("svc-secret"),
+        user_base_dn="ou=people,dc=test",
+        user_filter="(uid={username})",
+        attr_uid="uid",
+        attr_mail="mail",
+        attr_display_name="cn",
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return row

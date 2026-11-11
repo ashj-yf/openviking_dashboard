@@ -22,6 +22,8 @@ class UserOut(BaseModel):
     id: int
     username: str
     role: str
+    # 认证来源：local（本机密码）/ ldap（目录统一认证）
+    auth_source: Literal["local", "ldap"] = "local"
     is_active: bool
     tenant_id: int | None = None
     account_id: str | None = None
@@ -39,6 +41,15 @@ class UserOut(BaseModel):
 
 class UserRoleRequest(BaseModel):
     role: Literal["team_admin", "user"]
+
+
+class UserProvisionRequest(BaseModel):
+    """LDAP JIT 用户开通：为自动建档的用户补全团队归属与 OV 身份。"""
+
+    tenant_id: int
+    role: Literal["team_admin", "user"] = "user"
+    ov_user_id: str | None = Field(default=None, pattern=ID_PATTERN)
+    seed: str | None = Field(default=None, min_length=1, max_length=256)
 
 
 class UserResetPasswordRequest(BaseModel):

@@ -8,6 +8,7 @@ from app.schemas.user import (
     KeyRegenerateRequest,
     UserCreateRequest,
     UserOut,
+    UserProvisionRequest,
     UserResetPasswordRequest,
     UserRoleRequest,
     UserSyncReport,
@@ -22,7 +23,9 @@ _MANAGERS = ("admin", "team_admin")
 def _to_out(u: DashboardUser) -> UserOut:
     has_key = bool(u.ov_user_key_encrypted)
     return UserOut(
-        id=u.id, username=u.username, role=u.role, is_active=u.is_active,
+        id=u.id, username=u.username, role=u.role,
+        auth_source=u.auth_source,
+        is_active=u.is_active,
         tenant_id=u.tenant_id,
         account_id=u.tenant.ov_account_id if u.tenant else None,
         ov_user_id=u.ov_user_id, ov_role=u.ov_role,
@@ -66,6 +69,18 @@ async def create_user(
     actor = await _manager(current)
     ip = request.client.host if request.client else None
     user = await user_service.create_user(db, ov, actor, payload, ip=ip)
+    return _to_out(user)
+
+
+@router.post("/{user_id}/provision", response_model=UserOut)
+async def provision_user(
+    user_id: int, payload: UserProvisionRequest, request: Request,
+    db: DBSession, ov: OVAdminDep, admin: AdminUser,
+):
+    """LDAP JIT 用户开通：仅平台 admin（B4）。"""
+    target = await user_service.get_target_or_404(db, user_id)
+    ip = request.client.host if request.client else None
+    user = await user_service.provision_jit_user(db, ov, admin, target, payload, ip=ip)
     return _to_out(user)
 
 
