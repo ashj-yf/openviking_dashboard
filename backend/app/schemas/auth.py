@@ -1,5 +1,6 @@
 """认证相关请求/响应模型。"""
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -9,11 +10,15 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class TokenResponse(BaseModel):
-    access_token: str
+class LoginResponse(BaseModel):
+    """登录响应：成功发正式 token；LDAP 模式下未绑定用户返回 must_bind + 短时 bind_token。"""
+
+    access_token: str = ""
     token_type: str = "bearer"
-    expires_in: int
-    role: str
+    expires_in: int = 0
+    role: str = ""
+    must_bind: bool = False
+    bind_token: str | None = None
 
 
 class MeOut(BaseModel):
@@ -35,8 +40,19 @@ class MeOut(BaseModel):
     last_login_at: datetime | None = None
     # 该账号是否为 .env 配置的超管（UI 不可修改，前端据此渲染保护态）
     is_env_admin: bool = False
+    # LDAP 认证扩展：认证来源 / 是否已绑定 / LDAP 模式是否启用
+    auth_source: Literal["local", "ldap"] = "local"
+    ldap_bound: bool = False
+    ldap_enabled: bool = False
 
 
 class ChangePasswordRequest(BaseModel):
     old_password: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+class LdapBindRequest(BaseModel):
+    """LDAP 绑定请求体：凭 bind_token 鉴权，提交 LDAP 账号密码完成验证绑定。"""
+
+    ldap_username: str = Field(min_length=1, max_length=128)
+    ldap_password: str = Field(min_length=1, max_length=128)

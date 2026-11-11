@@ -17,7 +17,8 @@ class DashboardUser(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True)
-    password_hash: Mapped[str] = mapped_column(String(128))
+    # 本机口令哈希；绑定 LDAP 后本地口令作废置空（LDAP 密码由目录统一管理）
+    password_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
     # admin（平台管理员）/ team_admin（账户管理员）/ user
     role: Mapped[str] = mapped_column(String(16), default="user")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
