@@ -51,3 +51,21 @@ async def test_error_response_raises_with_message_field(mock_transport):
 async def test_empty_body_returns_none(mock_transport):
     mock_transport["handler"] = lambda req: httpx.Response(204)
     assert await OVClient("k").request("DELETE", "/x") is None
+
+
+@pytest.mark.asyncio
+async def test_connect_error_wrapped_as_503(mock_transport):
+    """httpx 连接级异常（HTTPError 子类）统一包装为 OpenVikingError(503)。"""
+
+    def _boom(_req: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("boom")
+
+    mock_transport["handler"] = _boom
+    with pytest.raises(OpenVikingError) as exc:
+        await OVClient("secret-key-value").request("GET", "/x")
+    assert exc.value.status_code == 503
+    assert exc.value.message == "OpenViking 连接失败: ConnectError"
+    assert exc.value.path == "/x"
+    # 消息不含 URL 参数与密钥
+    assert "secret-key-value" not in exc.value.message
+    assert "http" not in exc.value.message
