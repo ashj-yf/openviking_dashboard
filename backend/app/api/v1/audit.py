@@ -1,9 +1,10 @@
 """审计日志查询路由（admin/team_admin 可见，范围随角色收窄）。"""
 from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, Query
 
-from app.core.deps import DBSession, ManagerUser
+from app.core.deps import AdminUser, DBSession, ManagerUser, OVSystemDep
 from app.schemas.audit import AuditLogOut, AuditLogPageOut
 from app.services import audit_service
 from app.services.audit_service import parse_detail
@@ -51,3 +52,9 @@ async def list_audit_logs(
         page=page,
         page_size=page_size,
     )
+
+
+@router.get("/ov")
+async def list_ov_audit_logs(_: AdminUser, ov: OVSystemDep) -> Any:
+    """透传 OV /console/audit（字段待真机抓包固化，Q12）。错误冒泡走全局 OpenVikingError handler。"""
+    return await ov.console_audit()

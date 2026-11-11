@@ -219,6 +219,45 @@ async def test_audit_filters_tz_aware_normalized_to_utc(client, db, make_user, a
     assert r.json()["total"] == 1
 
 
+async def test_ov_audit_admin_only(client, make_user, make_tenant, auth_headers):
+    """OV 审计透传仅 admin 可用：team_admin/user 一律 403。"""
+    t1 = await make_tenant("t-ov")
+    ta = await make_user("ta", "Passw0rd!", "team_admin", tenant=t1)
+    viewer = await make_user("plain", "Passw0rd!", "user")
+
+    r = await client.get("/api/v1/audit-logs/ov", headers=auth_headers(ta))
+    assert r.status_code == 403
+    r = await client.get("/api/v1/audit-logs/ov", headers=auth_headers(viewer))
+    assert r.status_code == 403
+
+
+async def test_ov_audit_passthrough(client, make_user, auth_headers, ov_calls):
+    """OV 200 响应原样透传（逐字段一致，不包 wrapper），调用走 console/audit。"""
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    payload = {
+        "items": [{"id": "ov-1", "action": "chat.create", "user": "alice"}],
+        "total": 1,
+    }
+    ov_calls["responses"].append((200, payload))
+
+    r = await client.get("/api/v1/audit-logs/ov", headers=auth_headers(admin))
+    assert r.status_code == 200
+    assert r.json() == payload
+    assert ov_calls["calls"][0]["path"] == "/api/v1/console/audit"
+
+
+async def test_ov_audit_ov_error_passthrough(client, make_user, auth_headers, ov_calls):
+    """OV 错误不 catch，冒泡走全局 OpenVikingError handler（非 200 + ov_status）。"""
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    ov_calls["responses"].append((502, {"detail": "bad"}))
+
+    r = await client.get("/api/v1/audit-logs/ov", headers=auth_headers(admin))
+    assert r.status_code == 502
+    body = r.json()
+    assert body["ov_status"] == 502
+    assert "detail" in body
+
+
 async def test_audit_sorted_desc(client, db, make_user, auth_headers):
     admin = await make_user("rootadmin", "Admin#12345", "admin")
     for _ in range(3):
