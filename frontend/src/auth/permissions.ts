@@ -3,7 +3,8 @@ export type Role = "admin" | "team_admin" | "user";
 export type Permission =
   | "tenants:manage"
   | "users:manage"
-  | "credentials:view";
+  | "credentials:view"
+  | "ldap:manage";
 
 export function homePathFor(role: string | undefined): string {
   if (role === "admin") return "/tenants";
@@ -19,5 +20,7 @@ export function can(role: string | undefined, permission: Permission): boolean {
       return role === "admin" || role === "team_admin";
     case "credentials:view":
       return role === "team_admin" || role === "user";
+    case "ldap:manage":
+      return role === "admin";
   }
 }

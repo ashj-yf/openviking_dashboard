@@ -12,6 +12,7 @@ import { ChangePasswordPage } from "@/pages/ChangePasswordPage";
 import { CredentialsPage } from "@/pages/credentials/CredentialsPage";
 import { ForbiddenPage } from "@/pages/errors/ForbiddenPage";
 import { NotFoundPage } from "@/pages/errors/NotFoundPage";
+import { LdapConfigPage } from "@/pages/ldap/LdapConfigPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { TenantDetailPage } from "@/pages/tenants/TenantDetailPage";
 import { TenantListPage } from "@/pages/tenants/TenantListPage";
@@ -127,6 +128,14 @@ export function AppRoutes() {
                   element={
                     <RequireRole allow={["team_admin", "user"]}>
                       <CredentialsPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/ldap-config"
+                  element={
+                    <RequireRole allow="admin">
+                      <LdapConfigPage />
                     </RequireRole>
                   }
                 />
