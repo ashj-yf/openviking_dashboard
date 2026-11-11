@@ -2,6 +2,8 @@ import { useMemo, type ReactNode } from "react";
 import { Dropdown, Layout, Menu, Space, Typography } from "antd";
 import type { MenuProps } from "antd";
 import {
+  DashboardOutlined,
+  FileTextOutlined,
   KeyOutlined,
   LogoutOutlined,
   SafetyCertificateOutlined,
@@ -28,8 +30,10 @@ export function buildUserMenu(isEnvAdmin: boolean): MenuProps["items"] {
 }
 
 const NAV_ITEMS: { key: string; label: string; permission: Permission; icon: ReactNode }[] = [
+  { key: "/overview", label: "总览看板", permission: "overview:view", icon: <DashboardOutlined /> },
   { key: "/tenants", label: "团队管理", permission: "tenants:manage", icon: <TeamOutlined /> },
   { key: "/users", label: "用户管理", permission: "users:manage", icon: <UserOutlined /> },
+  { key: "/audit-logs", label: "审计日志", permission: "audit:view", icon: <FileTextOutlined /> },
   { key: "/ldap-config", label: "LDAP 认证", permission: "ldap:manage", icon: <SafetyCertificateOutlined /> },
   { key: "/credentials", label: "我的凭证", permission: "credentials:view", icon: <KeyOutlined /> },
 ];

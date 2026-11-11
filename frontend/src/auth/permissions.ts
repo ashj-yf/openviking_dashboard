@@ -4,7 +4,9 @@ export type Permission =
   | "tenants:manage"
   | "users:manage"
   | "credentials:view"
-  | "ldap:manage";
+  | "ldap:manage"
+  | "audit:view"
+  | "overview:view";
 
 export function homePathFor(role: string | undefined): string {
   if (role === "admin") return "/tenants";
@@ -22,5 +24,11 @@ export function can(role: string | undefined, permission: Permission): boolean {
       return role === "team_admin" || role === "user";
     case "ldap:manage":
       return role === "admin";
+    case "audit:view":
+      // 审计日志：admin 全量只读；team_admin 本团队只读。
+      return role === "admin" || role === "team_admin";
+    case "overview:view":
+      // 总览看板：admin 全量；team_admin 收窄版（本团队视角）。
+      return role === "admin" || role === "team_admin";
   }
 }
