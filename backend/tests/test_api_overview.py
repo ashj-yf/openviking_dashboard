@@ -12,7 +12,7 @@ OBSERVER_COMPONENTS = (
 )
 
 
-async def test_summary_rbac(client, make_user, make_tenant, auth_headers):
+async def test_summary_rbac(client, make_user, make_tenant, auth_headers, ov_calls):
     """user 403；team_admin 本团队计数且全局字段为 None；admin 全字段。"""
     admin = await make_user("rootadmin", "Admin#12345", "admin")
     viewer = await make_user("plain", "Passw0rd!", "user")
@@ -36,6 +36,11 @@ async def test_summary_rbac(client, make_user, make_tenant, auth_headers):
     assert body["users_disabled"] == 0
     # ov_health 全员可见（OVR-2 顶栏健康灯）
     assert body["ov_health"] is not None
+    # team_admin 分支根本不请求 dashboard_summary（跳过而非请求后丢弃）；
+    # 此时 admin 分支尚未执行，calls 仅含本请求（viewer 403 不触达 OV）
+    assert not any(
+        "/api/v1/console/dashboard/summary" in c["path"] for c in ov_calls["calls"]
+    )
 
     # admin：全字段
     r = await client.get("/api/v1/overview/summary", headers=auth_headers(admin))
@@ -96,6 +101,9 @@ async def test_observer_admin_only(client, make_user, make_tenant, auth_headers)
     viewer = await make_user("plain", "Passw0rd!", "user")
 
     r = await client.get("/api/v1/overview/observer", headers=auth_headers(ta))
+    assert r.status_code == 403
+    # 单组件端点同样仅 admin：team_admin 直调被后端拒绝
+    r = await client.get("/api/v1/overview/observer/queue", headers=auth_headers(ta))
     assert r.status_code == 403
     r = await client.get("/api/v1/overview/observer", headers=auth_headers(viewer))
     assert r.status_code == 403

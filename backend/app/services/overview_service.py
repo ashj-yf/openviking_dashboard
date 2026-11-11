@@ -4,7 +4,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import DashboardUser, Tenant
@@ -49,7 +49,7 @@ async def build_summary(
             await db.scalar(select(func.count()).select_from(Tenant)) or 0
         )
 
-    scope = [DashboardUser.tenant_id.isnot(None)]
+    scope: list[ColumnElement[bool]] = [DashboardUser.tenant_id.isnot(None)]
     if actor.role != "admin":
         scope.append(DashboardUser.tenant_id == actor.tenant_id)
     by_active = {
