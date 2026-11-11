@@ -64,6 +64,34 @@ async def test_ldap_authenticate_connect_fail_raises_unavailable(db, ldap_cfg, f
     assert fake_ldap.verify_calls == []
 
 
+async def test_response_timeout_classified_unavailable(db, ldap_cfg, monkeypatch):
+    """响应超时归入不可用类：LDAPResponseTimeoutError 不继承 LDAPCommunicationError，
+    两级 bind 任一级超时都必须抛 LdapUnavailableError，不得误报凭据错误。"""
+    from ldap3.core.exceptions import LDAPResponseTimeoutError
+
+    def _timeout(cfg, dn, password):
+        raise LDAPResponseTimeoutError("timed out")
+
+    monkeypatch.setattr(ldap_service, "_open_and_bind", _timeout)
+    # 第一级 bind（服务 bind + 检索）超时
+    with pytest.raises(ldap_service.LdapUnavailableError) as ei:
+        await ldap_service.ldap_authenticate(db, "ernie", "pw")
+    assert ei.value.stage == "connect"
+
+    # 第二级 bind（验密）超时：检索放行后验密超时同样不可用
+    monkeypatch.setattr(
+        ldap_service,
+        "_search_user_sync",
+        lambda cfg, username: (
+            "cn=ernie,ou=people,dc=test",
+            {"uid": "ernie", "mail": "", "display_name": ""},
+        ),
+    )
+    with pytest.raises(ldap_service.LdapUnavailableError) as ei:
+        await ldap_service.ldap_authenticate(db, "ernie", "pw")
+    assert ei.value.stage == "connect"
+
+
 async def test_ldap_mode_enabled_false_without_row(db):
     assert await ldap_service.load_ldap_config(db) is None
     assert await ldap_service.ldap_mode_enabled(db) is False

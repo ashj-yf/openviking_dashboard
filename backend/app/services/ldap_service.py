@@ -88,11 +88,32 @@ def _build_server(cfg: LdapConfig):
     )
 
 
+def _unavailable_errors() -> tuple:
+    """网络/超时类异常元组，供两个接缝函数归入 LdapUnavailableError。
+
+    注意：ldap3 2.9.1 中响应超时（LDAPResponseTimeoutError）、STARTTLS 失败
+    （LDAPStartTLSError）与证书失败（LDAPCertificateError）直接继承
+    LDAPExceptionError，并不继承 LDAPCommunicationError，必须显式并入。
+    """
+    from ldap3.core.exceptions import (
+        LDAPCertificateError,
+        LDAPCommunicationError,
+        LDAPResponseTimeoutError,
+        LDAPStartTLSError,
+    )
+    return (
+        LDAPCommunicationError,
+        LDAPResponseTimeoutError,
+        LDAPStartTLSError,
+        LDAPCertificateError,
+    )
+
+
 def _open_and_bind(cfg: LdapConfig, dn: str | None, password: str | None):
     """建连（含 STARTTLS 升级）并以给定 DN bind；失败时自行关连再抛出。
 
-    网络类失败抛 LDAPCommunicationError 系，凭据类失败抛其余 LDAPException 系，
-    异常分类由调用方接缝函数处理。
+    网络/超时类失败抛 _unavailable_errors() 所列异常，凭据类失败抛其余
+    LDAPException 系，异常分类由调用方接缝函数处理。
     """
     from ldap3 import Connection
     from ldap3.core.exceptions import LDAPException
@@ -154,11 +175,7 @@ def _search_user_sync(cfg: LdapConfig, username: str) -> tuple[str, dict[str, st
     其余失败抛 LdapError（stage="search"）。
     """
     from ldap3 import SUBTREE
-    from ldap3.core.exceptions import (
-        LDAPBindError,
-        LDAPCommunicationError,
-        LDAPException,
-    )
+    from ldap3.core.exceptions import LDAPBindError, LDAPException
 
     try:
         service_password = (
@@ -186,7 +203,7 @@ def _search_user_sync(cfg: LdapConfig, username: str) -> tuple[str, dict[str, st
             "display_name": _first_attr(entry.get("attributes", {}), cfg.attr_display_name),
         }
         return str(entry["dn"]), attrs
-    except LDAPCommunicationError as exc:
+    except _unavailable_errors() as exc:
         raise LdapUnavailableError() from exc
     except LDAPBindError as exc:
         raise LdapError(
@@ -210,11 +227,11 @@ def _verify_password_sync(cfg: LdapConfig, user_dn: str, password: str) -> None:
     验密通过静默返回；凭据错误抛 LdapError（stage="auth"），网络/超时抛
     LdapUnavailableError（stage="connect"）。
     """
-    from ldap3.core.exceptions import LDAPCommunicationError, LDAPException
+    from ldap3.core.exceptions import LDAPException
 
     try:
         conn = _open_and_bind(cfg, user_dn, password)
-    except LDAPCommunicationError as exc:
+    except _unavailable_errors() as exc:
         raise LdapUnavailableError() from exc
     except LDAPException as exc:
         raise LdapError("auth", "LDAP 账号或密码错误") from exc
