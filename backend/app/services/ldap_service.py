@@ -184,12 +184,21 @@ def _search_user_sync(cfg: LdapConfig, username: str) -> tuple[str, dict[str, st
     except ValueError as exc:
         raise LdapError("search", "Bind 密码解密失败，请重新保存 LDAP 配置") from exc
 
+    # 占位符笔误（如 (uid={user})）在建连前先拦截，避免每次检索都白建连接
+    # 且异常裸冒泡成 500；登录侧落 401 统一文案、连接测试落 search 阶段提示。
+    try:
+        search_filter = cfg.user_filter.format(username=username)
+    except (KeyError, IndexError, ValueError) as exc:
+        raise LdapError(
+            "search", "用户过滤器格式无效，占位符须为 {username}"
+        ) from exc
+
     conn = None
     try:
         conn = _open_and_bind(cfg, cfg.bind_dn, service_password)
         conn.search(
             search_base=cfg.user_base_dn,
-            search_filter=cfg.user_filter.format(username=username),
+            search_filter=search_filter,
             search_scope=SUBTREE,
             attributes=[cfg.attr_uid, cfg.attr_mail, cfg.attr_display_name],
         )

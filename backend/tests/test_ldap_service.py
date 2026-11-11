@@ -139,6 +139,41 @@ async def test_test_config_empty_password_stage_config(fake_ldap):
     assert fake_ldap.search_calls == []
 
 
+async def test_bad_user_filter_placeholder_raises_search_stage(db):
+    """管理员过滤器占位符笔误（{user} ≠ {username}）必须归一为 LdapError(search)，
+    不得让裸 KeyError 冒泡导致所有 LDAP 登录一律 500。"""
+    from app.models import LdapConfig
+
+    cfg = LdapConfig(
+        id=1,
+        enabled=True,
+        server_host="ldap.test",
+        server_port=389,
+        encryption="none",
+        bind_dn="",
+        bind_password_enc="",
+        user_base_dn="ou=people,dc=test",
+        user_filter="(uid={user})",
+        attr_uid="uid",
+        attr_mail="mail",
+        attr_display_name="displayName",
+    )
+    db.add(cfg)
+    await db.commit()
+    with pytest.raises(ldap_service.LdapError) as ei:
+        await ldap_service.ldap_authenticate(db, "alice", "pw")
+    assert ei.value.stage == "search"
+    assert "占位符" in ei.value.message
+    assert not isinstance(ei.value, ldap_service.LdapUnavailableError)
+
+
+async def test_config_test_reports_bad_filter_search_stage():
+    """连接测试路径同样落到 search 阶段分类提示，而非未分类异常。"""
+    result = await ldap_service.test_ldap_config(_payload(user_filter="(uid={user})"))
+    assert (result.ok, result.stage) == (False, "search")
+    assert "占位符" in result.message
+
+
 async def test_test_config_ok_and_fail_stages(fake_ldap):
     payload = _payload()
     fake_ldap.users["smoke-probe"] = FakeUser("cn=smoke-probe,ou=people,dc=test", "x", "s@t", "Smoke")
