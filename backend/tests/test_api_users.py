@@ -1,4 +1,7 @@
 """用户开通、列表与生命周期管理路由。"""
+import json
+from datetime import datetime, timezone
+
 from sqlalchemy import select
 
 from app.core.crypto import decrypt_secret
@@ -548,3 +551,252 @@ async def test_users_list_marks_env_admin(client, make_user, auth_headers):
     flagged = {u["username"]: u["is_env_admin"] for u in r.json()}
     assert flagged[get_settings().first_admin_username] is True
     assert flagged["chief"] is False
+
+
+# ---------------------------------------------------------------------------
+# B4 LDAP 语义：创建封锁、JIT 开通与守卫
+# ---------------------------------------------------------------------------
+
+
+async def _make_jit_user(db, username: str) -> DashboardUser:
+    """构造 LDAP JIT 建档用户（字段与 auth_service 登录分流建档一致）。"""
+    user = DashboardUser(
+        username=username,
+        password_hash=None,
+        role="user",
+        auth_source="ldap",
+        ldap_username=username,
+        ldap_dn=f"uid={username},ou=people,dc=test",
+        bound_at=datetime.now(timezone.utc),
+        is_active=True,
+        must_change_password=False,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def test_create_user_blocked_in_ldap_mode(
+    client, db, make_user, make_tenant, auth_headers, ldap_cfg, ov_calls
+):
+    chief = await make_user("chief", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    r = await client.post(
+        "/api/v1/users",
+        json={"username": "carol", "password": "Carol#1234", "tenant_id": t.id},
+        headers=auth_headers(chief),
+    )
+    assert r.status_code == 409, r.text
+    assert r.json()["detail"] == "LDAP 模式下禁止创建用户，新用户请直接 LDAP 登录自动建档"
+    assert ov_calls["calls"] == []  # 守卫在触达 OV 之前
+    rows = (
+        await db.scalars(select(DashboardUser).where(DashboardUser.username == "carol"))
+    ).all()
+    assert rows == []  # 本地零写入
+
+
+async def test_provision_jit_user_success(
+    client, db, make_user, make_tenant, auth_headers, ldap_cfg, ov_calls
+):
+    chief = await make_user("chief", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    jit = await _make_jit_user(db, "zhangsan")
+    ov_calls["responses"].extend([
+        (200, {"user_id": "zhangsan"}),
+        (200, {"key": "prov-key-12345678"}),
+    ])
+    r = await client.post(
+        f"/api/v1/users/{jit.id}/provision",
+        json={"tenant_id": t.id},
+        headers=auth_headers(chief),
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["tenant_id"] == t.id
+    assert body["ov_user_id"] == "zhangsan"
+    assert body["ov_role"] == "user"
+    assert body["auth_source"] == "ldap"
+    assert body["must_change_password"] is False
+    assert body["key_state"] == "current"
+    assert "prov-key-12345678" not in r.text  # 明文 key 不出接口
+    # OV 顺序：先注册后签发
+    assert ov_calls["calls"][0]["path"] == "/api/v1/admin/accounts/acme/users"
+    assert ov_calls["calls"][0]["body"] == {"user_id": "zhangsan", "role": "user"}
+    assert ov_calls["calls"][1]["path"] == "/api/v1/admin/accounts/acme/users/zhangsan/key"
+    # 行更新
+    await db.refresh(jit)
+    assert jit.tenant_id == t.id
+    assert jit.ov_user_id == "zhangsan"
+    assert jit.ov_role == "user"
+    assert jit.role == "user"
+    assert jit.must_change_password is False
+    # key_records 有行
+    rec = (
+        await db.scalars(select(KeyRecord).where(KeyRecord.dashboard_user_id == jit.id))
+    ).one()
+    assert rec.is_current is True
+    assert rec.key_hint == "prov-key"[:8]
+    # 审计 user.provision
+    log = (await db.scalars(select(AuditLog).where(AuditLog.action == "user.provision"))).one()
+    assert log.actor_user_id == chief.id
+    assert json.loads(log.detail_json) == {
+        "tenant": "acme", "ov_user_id": "zhangsan",
+        "role": "user", "seed_used": False,
+    }
+
+
+async def test_provision_already_provisioned_409(
+    client, db, make_user, make_tenant, auth_headers, ldap_cfg, ov_calls
+):
+    chief = await make_user("chief", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    # 本机用户不是 JIT 用户
+    local_u = await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="alice")
+    r1 = await client.post(
+        f"/api/v1/users/{local_u.id}/provision",
+        json={"tenant_id": t.id},
+        headers=auth_headers(chief),
+    )
+    assert r1.status_code == 409
+    assert r1.json()["detail"] == "该用户已开通或非 JIT 用户"
+    # 已开通的 LDAP 用户（tenant 非空）同样拒绝
+    prov = await make_user(
+        "wangwu", "Passw0rd!", "user", tenant=t, ov_user_id="wangwu",
+        auth_source="ldap", ldap_username="wangwu",
+        ldap_dn="uid=wangwu,ou=people,dc=test", bound_at=datetime.now(timezone.utc),
+    )
+    r2 = await client.post(
+        f"/api/v1/users/{prov.id}/provision",
+        json={"tenant_id": t.id},
+        headers=auth_headers(chief),
+    )
+    assert r2.status_code == 409
+    assert r2.json()["detail"] == "该用户已开通或非 JIT 用户"
+    assert ov_calls["calls"] == []
+
+
+async def test_provision_unknown_tenant_404(
+    client, db, make_user, auth_headers, ldap_cfg, ov_calls
+):
+    chief = await make_user("chief", "Admin#12345", "admin")
+    jit = await _make_jit_user(db, "zhangsan")
+    r = await client.post(
+        f"/api/v1/users/{jit.id}/provision",
+        json={"tenant_id": 99999},
+        headers=auth_headers(chief),
+    )
+    assert r.status_code == 404, r.text
+    assert r.json()["detail"] == "团队不存在"
+    assert ov_calls["calls"] == []
+
+
+async def test_provision_ov_failure_local_untouched_502(
+    client, db, make_user, make_tenant, auth_headers, ldap_cfg, ov_calls
+):
+    chief = await make_user("chief", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    jit = await _make_jit_user(db, "zhangsan")
+    ov_calls["responses"].append((502, {"detail": "boom"}))
+    r = await client.post(
+        f"/api/v1/users/{jit.id}/provision",
+        json={"tenant_id": t.id},
+        headers=auth_headers(chief),
+    )
+    assert r.status_code == 502
+    await db.refresh(jit)
+    assert jit.tenant_id is None  # 本地零写入
+    assert jit.ov_user_id is None
+    assert jit.must_change_password is False
+    assert (await db.scalars(select(KeyRecord))).all() == []
+    provisioned_logs = (
+        await db.scalars(select(AuditLog).where(AuditLog.action == "user.provision"))
+    ).all()
+    assert provisioned_logs == []
+
+
+async def test_provision_requires_platform_admin(
+    client, db, make_user, make_tenant, auth_headers, ldap_cfg
+):
+    t = await make_tenant("acme")
+    ta = await make_user("boss", "Passw0rd!", "team_admin", tenant=t, ov_user_id="boss")
+    jit = await _make_jit_user(db, "zhangsan")
+    r = await client.post(
+        f"/api/v1/users/{jit.id}/provision",
+        json={"tenant_id": t.id},
+        headers=auth_headers(ta),
+    )
+    assert r.status_code == 403, r.text
+
+
+async def test_reset_password_blocked_for_ldap_user(
+    client, db, make_user, auth_headers, ldap_cfg
+):
+    chief = await make_user("chief", "Admin#12345", "admin")
+    jit = await _make_jit_user(db, "zhangsan")
+    r = await client.post(
+        f"/api/v1/users/{jit.id}/reset-password",
+        json={"new_password": "New#123456"},
+        headers=auth_headers(chief),
+    )
+    assert r.status_code == 400, r.text
+    assert r.json()["detail"] == "LDAP 用户密码由 LDAP 统一管理，无法重置"
+    await db.refresh(jit)
+    assert jit.password_hash is None  # 本地口令未被改写
+    reset_logs = (
+        await db.scalars(
+            select(AuditLog).where(AuditLog.action == "user.password.reset")
+        )
+    ).all()
+    assert reset_logs == []
+
+
+async def test_set_role_blocked_for_unprovisioned_jit(
+    client, db, make_user, make_tenant, auth_headers, ldap_cfg, ov_calls
+):
+    chief = await make_user("chief", "Admin#12345", "admin")
+    await make_tenant("acme")
+    jit = await _make_jit_user(db, "zhangsan")
+    r = await client.patch(
+        f"/api/v1/users/{jit.id}/role",
+        json={"role": "team_admin"},
+        headers=auth_headers(chief),
+    )
+    assert r.status_code == 409, r.text
+    assert r.json()["detail"] == "该用户尚未开通，请先执行开通操作"
+    assert ov_calls["calls"] == []
+    await db.refresh(jit)
+    assert jit.role == "user"
+
+
+async def test_delete_jit_user_local_only(
+    client, db, make_user, auth_headers, ldap_cfg, ov_calls
+):
+    chief = await make_user("chief", "Admin#12345", "admin")
+    jit = await _make_jit_user(db, "lisi")
+    r = await client.delete(f"/api/v1/users/{jit.id}", headers=auth_headers(chief))
+    assert r.status_code == 204, r.text
+    assert ov_calls["calls"] == []  # 无 OV 身份，不触 OV 删除
+    rows = (
+        await db.scalars(select(DashboardUser).where(DashboardUser.id == jit.id))
+    ).all()
+    assert rows == []  # 本地硬删（select 走 populate_existing，读到的非缓存副本）
+    delete_logs = (
+        await db.scalars(select(AuditLog).where(AuditLog.action == "user.delete"))
+    ).all()
+    assert len(delete_logs) == 1
+    assert delete_logs[0].target_id == str(jit.id)
+
+
+async def test_user_out_exposes_auth_source(
+    client, db, make_user, make_tenant, auth_headers
+):
+    chief = await make_user("chief", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="alice")
+    await _make_jit_user(db, "zhaoliu")
+    r = await client.get("/api/v1/users", headers=auth_headers(chief))
+    assert r.status_code == 200
+    sources = {u["username"]: u["auth_source"] for u in r.json()}
+    assert sources["alice"] == "local"
+    assert sources["zhaoliu"] == "ldap"

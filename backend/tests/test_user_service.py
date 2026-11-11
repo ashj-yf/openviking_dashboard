@@ -1,12 +1,13 @@
 """team_admin 范围守卫与开通流程。"""
 import json
+from datetime import datetime, timezone
 
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import select
 
 from app.models import AuditLog, DashboardUser, KeyRecord
-from app.schemas.user import UserCreateRequest
+from app.schemas.user import UserCreateRequest, UserProvisionRequest
 from app.services import user_service
 from app.services.openviking.client import OpenVikingError
 
@@ -164,3 +165,96 @@ async def test_cannot_disable_last_active_platform_admin(db, make_user):
     with pytest.raises(HTTPException) as e:
         await user_service.set_enabled(db, inactive, admin, False, ip=None)
     assert e.value.status_code == 409
+
+
+# ---------- B4 LDAP 语义：服务层守卫 ----------
+async def _make_jit(db, username: str) -> DashboardUser:
+    user = DashboardUser(
+        username=username,
+        password_hash=None,
+        role="user",
+        auth_source="ldap",
+        ldap_username=username,
+        ldap_dn=f"uid={username},ou=people,dc=test",
+        bound_at=datetime.now(timezone.utc),
+        is_active=True,
+        must_change_password=False,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def test_ldap_mode_blocks_create_with_zero_side_effects(
+    db, make_user, make_tenant, ldap_cfg
+):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    ov = _AdminAPI()
+    payload = UserCreateRequest(username="carol", password="Carol#1234", tenant_id=t.id)
+    with pytest.raises(HTTPException) as e:
+        await user_service.create_user(db, ov, admin, payload, ip=None)
+    assert e.value.status_code == 409
+    assert "LDAP 模式下禁止创建用户" in e.value.detail
+    assert ov.calls == []  # 未触达 OV
+    assert (
+        await db.scalars(select(DashboardUser).where(DashboardUser.username == "carol"))
+    ).all() == []  # 本地零写入
+
+
+async def test_provision_service_requires_platform_admin(db, make_user, make_tenant):
+    t = await make_tenant("acme")
+    ta = await make_user("boss1", "Passw0rd!", "team_admin", tenant=t, ov_user_id="boss1")
+    jit = await _make_jit(db, "zhangsan")
+    with pytest.raises(HTTPException) as e:
+        await user_service.provision_jit_user(
+            db, _AdminAPI(), ta, jit, UserProvisionRequest(tenant_id=t.id), ip=None
+        )
+    assert e.value.status_code == 403
+
+
+async def test_provision_jit_user_happy_path(db, make_user, make_tenant):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    jit = await _make_jit(db, "zhangsan")
+    ov = _AdminAPI([{"user_id": "zhangsan"}, {"key": "jit-key-123456789"}])
+    user = await user_service.provision_jit_user(
+        db, ov, admin, jit, UserProvisionRequest(tenant_id=t.id), ip=None
+    )
+    assert user.tenant_id == t.id
+    assert user.ov_user_id == "zhangsan"
+    assert user.ov_role == "user"
+    assert user.must_change_password is False
+    assert user.auth_source == "ldap"
+    assert ov.calls[0] == ("register", "acme", "zhangsan", "user", None)
+    assert ov.calls[1][0] == "key"
+    rec = (
+        await db.scalars(select(KeyRecord).where(KeyRecord.dashboard_user_id == user.id))
+    ).one()
+    assert rec.is_current is True
+    assert rec.ov_user_id == "zhangsan"
+    log = (
+        await db.scalars(select(AuditLog).where(AuditLog.action == "user.provision"))
+    ).one()
+    assert json.loads(log.detail_json)["tenant"] == "acme"
+
+
+async def test_provision_service_explicit_ov_user_id_and_seed(db, make_user, make_tenant):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    jit = await _make_jit(db, "zhangsan")
+    ov = _AdminAPI([{"user_id": "zsan"}, {"key": "seed-key-12345678"}])
+    payload = UserProvisionRequest(
+        tenant_id=t.id, role="team_admin", ov_user_id="zsan", seed="s3cret-seed"
+    )
+    user = await user_service.provision_jit_user(db, ov, admin, jit, payload, ip=None)
+    assert user.role == "team_admin"
+    assert user.ov_role == "admin"
+    assert user.ov_user_id == "zsan"
+    assert ov.calls[0] == ("register", "acme", "zsan", "admin", "s3cret-seed")
+    rec = (
+        await db.scalars(select(KeyRecord).where(KeyRecord.dashboard_user_id == user.id))
+    ).one()
+    assert rec.seed_used is True
+    assert rec.key_kind == "admin"
