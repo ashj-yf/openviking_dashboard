@@ -13,6 +13,10 @@ dependencies = [
     "pyjwt>=2.10",
     "bcrypt>=4.2",
     "cryptography>=44.0",
+    "ldap3>=2.9",
+    # ldap3 2.9.1 仍 import pyasn1 0.6 起废弃的小写别名（tagMap 等），import 即
+    # 触发 DeprecationWarning，与 filterwarnings=error 冲突；锁定 0.5.x 旧 API。
+    "pyasn1<0.6",
 ]
 
 [dependency-groups]
