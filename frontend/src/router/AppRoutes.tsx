@@ -14,6 +14,8 @@ import { ForbiddenPage } from "@/pages/errors/ForbiddenPage";
 import { NotFoundPage } from "@/pages/errors/NotFoundPage";
 import { LdapConfigPage } from "@/pages/ldap/LdapConfigPage";
 import { LoginPage } from "@/pages/LoginPage";
+import { AuditListPage } from "@/pages/audit/AuditListPage";
+import { OverviewPage } from "@/pages/overview/OverviewPage";
 import { TenantDetailPage } from "@/pages/tenants/TenantDetailPage";
 import { TenantListPage } from "@/pages/tenants/TenantListPage";
 import { UserListPage } from "@/pages/users/UserListPage";
@@ -120,6 +122,22 @@ export function AppRoutes() {
                   element={
                     <RequireRole allow={["admin", "team_admin"]}>
                       <UserListPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/overview"
+                  element={
+                    <RequireRole allow={["admin", "team_admin"]}>
+                      <OverviewPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/audit-logs"
+                  element={
+                    <RequireRole allow={["admin", "team_admin"]}>
+                      <AuditListPage />
                     </RequireRole>
                   }
                 />
