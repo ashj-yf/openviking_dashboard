@@ -1,7 +1,7 @@
 """审计日志：写入自提交且不向调用方抛异常；查询按角色范围分页。"""
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -47,7 +47,7 @@ async def record(
         logger.error("审计日志写入失败: action=%s", action, exc_info=True)
 
 
-def _parse_detail(raw: str | None) -> dict | None:
+def parse_detail(raw: str | None) -> dict | None:
     """容错解析 detail_json：坏 JSON 或非 dict 内容降级为 {"_raw": 原串}，不得 500。"""
     if raw is None:
         return None
@@ -77,10 +77,16 @@ async def list_logs(
     - created_at 降序、id 兜底排序。
     """
     conditions = []
+    # tz-aware 参数归一到 UTC naive 后再比较（DB 存 naive UTC）；naive 参数原样
+    if start is not None and start.tzinfo is not None:
+        start = start.astimezone(timezone.utc).replace(tzinfo=None)
+    if end is not None and end.tzinfo is not None:
+        end = end.astimezone(timezone.utc).replace(tzinfo=None)
+    # autoescape：用户输入中的 % / _ 按字面匹配，不作为 LIKE 通配符
     if action:
-        conditions.append(AuditLog.action.startswith(action))
+        conditions.append(AuditLog.action.startswith(action, autoescape=True))
     if actor_name:
-        conditions.append(AuditLog.actor_name.contains(actor_name))
+        conditions.append(AuditLog.actor_name.contains(actor_name, autoescape=True))
     if start is not None:
         conditions.append(AuditLog.created_at >= start)
     if end is not None:
@@ -106,4 +112,4 @@ async def list_logs(
             .limit(page_size)
         )
     ).all()
-    return list(rows), int(total or 0)
+    return list(rows), total

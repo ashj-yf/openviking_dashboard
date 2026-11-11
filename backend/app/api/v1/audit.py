@@ -6,7 +6,7 @@ from fastapi import APIRouter, Query
 from app.core.deps import DBSession, ManagerUser
 from app.schemas.audit import AuditLogOut, AuditLogPageOut
 from app.services import audit_service
-from app.services.audit_service import _parse_detail
+from app.services.audit_service import parse_detail
 
 router = APIRouter(prefix="/audit-logs", tags=["audit"])
 
@@ -41,7 +41,7 @@ async def list_audit_logs(
                 action=row.action,
                 target_type=row.target_type,
                 target_id=row.target_id,
-                detail=_parse_detail(row.detail_json),
+                detail=parse_detail(row.detail_json),
                 ip=row.ip,
                 created_at=row.created_at,
             )

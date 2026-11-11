@@ -164,6 +164,61 @@ async def test_audit_detail_parse_and_tolerant(client, db, make_user, auth_heade
     assert by_action["user.disable"]["detail"] == {"_raw": "not-json"}
 
 
+async def test_audit_filters_like_wildcard_is_literal(client, db, make_user, auth_headers):
+    """用户输入的 % 按字面匹配（autoescape），不作为 LIKE 通配符。"""
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    await audit_service.record(db, "%export", actor=admin)
+    await audit_service.record(db, "auth.login.success", actor=admin)
+
+    # action=%：若 % 被当通配符会命中全部行；字面匹配只命中以 % 开头的行
+    r = await client.get(
+        "/api/v1/audit-logs", params={"action": "%"}, headers=auth_headers(admin)
+    )
+    body = r.json()
+    assert body["total"] == 1
+    assert body["items"][0]["action"] == "%export"
+
+    # a%：不命中不含字面 "a%" 前缀的普通行（auth. 开头的行）
+    r = await client.get(
+        "/api/v1/audit-logs", params={"action": "a%"}, headers=auth_headers(admin)
+    )
+    assert r.json()["total"] == 0
+
+
+async def test_audit_filters_tz_aware_normalized_to_utc(client, db, make_user, auth_headers):
+    """tz-aware 的 start 与同值 naive 过滤结果一致（tz-aware 归一为 UTC naive）。"""
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    db.add(
+        AuditLog(
+            actor_name="bob",
+            action="user.disable",
+            created_at=datetime(2026, 1, 1, 0, 0, 0),
+        )
+    )
+    await db.commit()
+
+    r = await client.get(
+        "/api/v1/audit-logs",
+        params={"actor": "bob", "start": "2026-01-01T00:00:00Z"},
+        headers=auth_headers(admin),
+    )
+    assert r.json()["total"] == 1
+    r = await client.get(
+        "/api/v1/audit-logs",
+        params={"actor": "bob", "start": "2026-01-01T00:00:00"},
+        headers=auth_headers(admin),
+    )
+    assert r.json()["total"] == 1
+
+    # 非 UTC 偏移量按 astimezone(UTC) 归一：+08:00 的零点即 UTC 零点，同样命中
+    r = await client.get(
+        "/api/v1/audit-logs",
+        params={"actor": "bob", "start": "2026-01-01T08:00:00+08:00"},
+        headers=auth_headers(admin),
+    )
+    assert r.json()["total"] == 1
+
+
 async def test_audit_sorted_desc(client, db, make_user, auth_headers):
     admin = await make_user("rootadmin", "Admin#12345", "admin")
     for _ in range(3):
