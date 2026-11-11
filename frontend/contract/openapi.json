@@ -49,7 +49,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TokenResponse"
+                  "$ref": "#/components/schemas/LoginResponse"
                 }
               }
             }
@@ -142,6 +142,161 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/ldap/bind": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Ldap Bind",
+        "operationId": "ldap_bind_api_v1_auth_ldap_bind_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LdapBindRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/ldap-config": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get Ldap Config",
+        "operationId": "get_ldap_config_api_v1_auth_ldap_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LdapConfigOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Update Ldap Config",
+        "operationId": "update_ldap_config_api_v1_auth_ldap_config_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LdapConfigUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LdapConfigOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/ldap-config/test": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Test Ldap Config",
+        "operationId": "test_ldap_config_api_v1_auth_ldap_config_test_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LdapConfigUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LdapTestResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -540,6 +695,64 @@
         },
         "responses": {
           "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}/provision": {
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Provision User",
+        "description": "LDAP JIT 用户开通：仅平台 admin（B4）。",
+        "operationId": "provision_user_api_v1_users__user_id__provision_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserProvisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -1177,6 +1390,231 @@
         "type": "object",
         "title": "KeyRegenerateRequest"
       },
+      "LdapBindRequest": {
+        "properties": {
+          "ldap_username": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Ldap Username"
+          },
+          "ldap_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Ldap Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ldap_username",
+          "ldap_password"
+        ],
+        "title": "LdapBindRequest",
+        "description": "LDAP 绑定请求体：凭 bind_token 鉴权，提交 LDAP 账号密码完成验证绑定。"
+      },
+      "LdapConfigOut": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "server_host": {
+            "type": "string",
+            "title": "Server Host"
+          },
+          "server_port": {
+            "type": "integer",
+            "title": "Server Port"
+          },
+          "encryption": {
+            "type": "string",
+            "title": "Encryption"
+          },
+          "bind_dn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bind Dn"
+          },
+          "user_base_dn": {
+            "type": "string",
+            "title": "User Base Dn"
+          },
+          "user_filter": {
+            "type": "string",
+            "title": "User Filter"
+          },
+          "attr_uid": {
+            "type": "string",
+            "title": "Attr Uid"
+          },
+          "attr_mail": {
+            "type": "string",
+            "title": "Attr Mail"
+          },
+          "attr_display_name": {
+            "type": "string",
+            "title": "Attr Display Name"
+          },
+          "has_bind_password": {
+            "type": "boolean",
+            "title": "Has Bind Password"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "server_host",
+          "server_port",
+          "encryption",
+          "user_base_dn",
+          "user_filter",
+          "attr_uid",
+          "attr_mail",
+          "attr_display_name",
+          "has_bind_password"
+        ],
+        "title": "LdapConfigOut",
+        "description": "配置读取响应：永不回显 bind 密码，仅以 has_bind_password 标记是否已保存。"
+      },
+      "LdapConfigUpdate": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "server_host": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Server Host"
+          },
+          "server_port": {
+            "type": "integer",
+            "maximum": 65535.0,
+            "minimum": 1.0,
+            "title": "Server Port"
+          },
+          "encryption": {
+            "type": "string",
+            "enum": [
+              "none",
+              "starttls",
+              "ldaps"
+            ],
+            "title": "Encryption",
+            "default": "none"
+          },
+          "bind_dn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bind Dn"
+          },
+          "bind_password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bind Password"
+          },
+          "user_base_dn": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "User Base Dn"
+          },
+          "user_filter": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "User Filter"
+          },
+          "attr_uid": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Attr Uid"
+          },
+          "attr_mail": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Attr Mail"
+          },
+          "attr_display_name": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Attr Display Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "server_host",
+          "server_port",
+          "user_base_dn",
+          "user_filter",
+          "attr_uid",
+          "attr_mail",
+          "attr_display_name"
+        ],
+        "title": "LdapConfigUpdate",
+        "description": "配置保存请求体；bind_password 为 None 表示保持已存密文不变。"
+      },
+      "LdapTestResult": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "stage": {
+            "type": "string",
+            "title": "Stage"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "stage",
+          "message"
+        ],
+        "title": "LdapTestResult",
+        "description": "连接测试结果；stage ∈ config / connect / search / ok，message 为中文分类文案。"
+      },
       "LoginRequest": {
         "properties": {
           "username": {
@@ -1194,6 +1632,49 @@
           "password"
         ],
         "title": "LoginRequest"
+      },
+      "LoginResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token",
+            "default": ""
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In",
+            "default": 0
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "default": ""
+          },
+          "must_bind": {
+            "type": "boolean",
+            "title": "Must Bind",
+            "default": false
+          },
+          "bind_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bind Token"
+          }
+        },
+        "type": "object",
+        "title": "LoginResponse",
+        "description": "登录响应：成功发正式 token；LDAP 模式下未绑定用户返回 must_bind + 短时 bind_token。"
       },
       "MeOut": {
         "properties": {
@@ -1294,6 +1775,25 @@
           "is_env_admin": {
             "type": "boolean",
             "title": "Is Env Admin",
+            "default": false
+          },
+          "auth_source": {
+            "type": "string",
+            "enum": [
+              "local",
+              "ldap"
+            ],
+            "title": "Auth Source",
+            "default": "local"
+          },
+          "ldap_bound": {
+            "type": "boolean",
+            "title": "Ldap Bound",
+            "default": false
+          },
+          "ldap_enabled": {
+            "type": "boolean",
+            "title": "Ldap Enabled",
             "default": false
           }
         },
@@ -1813,34 +2313,6 @@
         "type": "object",
         "title": "TenantUpdateRequest"
       },
-      "TokenResponse": {
-        "properties": {
-          "access_token": {
-            "type": "string",
-            "title": "Access Token"
-          },
-          "token_type": {
-            "type": "string",
-            "title": "Token Type",
-            "default": "bearer"
-          },
-          "expires_in": {
-            "type": "integer",
-            "title": "Expires In"
-          },
-          "role": {
-            "type": "string",
-            "title": "Role"
-          }
-        },
-        "type": "object",
-        "required": [
-          "access_token",
-          "expires_in",
-          "role"
-        ],
-        "title": "TokenResponse"
-      },
       "UserCreateRequest": {
         "properties": {
           "username": {
@@ -1921,6 +2393,15 @@
           "role": {
             "type": "string",
             "title": "Role"
+          },
+          "auth_source": {
+            "type": "string",
+            "enum": [
+              "local",
+              "ldap"
+            ],
+            "title": "Auth Source",
+            "default": "local"
           },
           "is_active": {
             "type": "boolean",
@@ -2039,6 +2520,54 @@
           "is_active"
         ],
         "title": "UserOut"
+      },
+      "UserProvisionRequest": {
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "title": "Tenant Id"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "team_admin",
+              "user"
+            ],
+            "title": "Role",
+            "default": "user"
+          },
+          "ov_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov User Id"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenant_id"
+        ],
+        "title": "UserProvisionRequest",
+        "description": "LDAP JIT 用户开通：为自动建档的用户补全团队归属与 OV 身份。"
       },
       "UserResetPasswordRequest": {
         "properties": {

@@ -89,6 +89,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/ldap/bind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ldap Bind */
+        post: operations["ldap_bind_api_v1_auth_ldap_bind_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/ldap-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Ldap Config */
+        get: operations["get_ldap_config_api_v1_auth_ldap_config_get"];
+        /** Update Ldap Config */
+        put: operations["update_ldap_config_api_v1_auth_ldap_config_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/ldap-config/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test Ldap Config */
+        post: operations["test_ldap_config_api_v1_auth_ldap_config_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tenants": {
         parameters: {
             query?: never;
@@ -155,6 +207,26 @@ export interface paths {
         put?: never;
         /** Create User */
         post: operations["create_user_api_v1_users_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{user_id}/provision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Provision User
+         * @description LDAP JIT 用户开通：仅平台 admin（B4）。
+         */
+        post: operations["provision_user_api_v1_users__user_id__provision_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -405,12 +477,132 @@ export interface components {
             /** Seed */
             seed?: string | null;
         };
+        /**
+         * LdapBindRequest
+         * @description LDAP 绑定请求体：凭 bind_token 鉴权，提交 LDAP 账号密码完成验证绑定。
+         */
+        LdapBindRequest: {
+            /** Ldap Username */
+            ldap_username: string;
+            /** Ldap Password */
+            ldap_password: string;
+        };
+        /**
+         * LdapConfigOut
+         * @description 配置读取响应：永不回显 bind 密码，仅以 has_bind_password 标记是否已保存。
+         */
+        LdapConfigOut: {
+            /** Enabled */
+            enabled: boolean;
+            /** Server Host */
+            server_host: string;
+            /** Server Port */
+            server_port: number;
+            /** Encryption */
+            encryption: string;
+            /** Bind Dn */
+            bind_dn?: string | null;
+            /** User Base Dn */
+            user_base_dn: string;
+            /** User Filter */
+            user_filter: string;
+            /** Attr Uid */
+            attr_uid: string;
+            /** Attr Mail */
+            attr_mail: string;
+            /** Attr Display Name */
+            attr_display_name: string;
+            /** Has Bind Password */
+            has_bind_password: boolean;
+            /** Updated At */
+            updated_at?: string | null;
+        };
+        /**
+         * LdapConfigUpdate
+         * @description 配置保存请求体；bind_password 为 None 表示保持已存密文不变。
+         */
+        LdapConfigUpdate: {
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /** Server Host */
+            server_host: string;
+            /** Server Port */
+            server_port: number;
+            /**
+             * Encryption
+             * @default none
+             * @enum {string}
+             */
+            encryption: "none" | "starttls" | "ldaps";
+            /** Bind Dn */
+            bind_dn?: string | null;
+            /** Bind Password */
+            bind_password?: string | null;
+            /** User Base Dn */
+            user_base_dn: string;
+            /** User Filter */
+            user_filter: string;
+            /** Attr Uid */
+            attr_uid: string;
+            /** Attr Mail */
+            attr_mail: string;
+            /** Attr Display Name */
+            attr_display_name: string;
+        };
+        /**
+         * LdapTestResult
+         * @description 连接测试结果；stage ∈ config / connect / search / ok，message 为中文分类文案。
+         */
+        LdapTestResult: {
+            /** Ok */
+            ok: boolean;
+            /** Stage */
+            stage: string;
+            /** Message */
+            message: string;
+        };
         /** LoginRequest */
         LoginRequest: {
             /** Username */
             username: string;
             /** Password */
             password: string;
+        };
+        /**
+         * LoginResponse
+         * @description 登录响应：成功发正式 token；LDAP 模式下未绑定用户返回 must_bind + 短时 bind_token。
+         */
+        LoginResponse: {
+            /**
+             * Access Token
+             * @default
+             */
+            access_token: string;
+            /**
+             * Token Type
+             * @default bearer
+             */
+            token_type: string;
+            /**
+             * Expires In
+             * @default 0
+             */
+            expires_in: number;
+            /**
+             * Role
+             * @default
+             */
+            role: string;
+            /**
+             * Must Bind
+             * @default false
+             */
+            must_bind: boolean;
+            /** Bind Token */
+            bind_token?: string | null;
         };
         /**
          * MeOut
@@ -452,6 +644,22 @@ export interface components {
              * @default false
              */
             is_env_admin: boolean;
+            /**
+             * Auth Source
+             * @default local
+             * @enum {string}
+             */
+            auth_source: "local" | "ldap";
+            /**
+             * Ldap Bound
+             * @default false
+             */
+            ldap_bound: boolean;
+            /**
+             * Ldap Enabled
+             * @default false
+             */
+            ldap_enabled: boolean;
         };
         /** RevealedKeyOut */
         RevealedKeyOut: {
@@ -611,20 +819,6 @@ export interface components {
             /** Remark */
             remark?: string | null;
         };
-        /** TokenResponse */
-        TokenResponse: {
-            /** Access Token */
-            access_token: string;
-            /**
-             * Token Type
-             * @default bearer
-             */
-            token_type: string;
-            /** Expires In */
-            expires_in: number;
-            /** Role */
-            role: string;
-        };
         /** UserCreateRequest */
         UserCreateRequest: {
             /** Username */
@@ -652,6 +846,12 @@ export interface components {
             username: string;
             /** Role */
             role: string;
+            /**
+             * Auth Source
+             * @default local
+             * @enum {string}
+             */
+            auth_source: "local" | "ldap";
             /** Is Active */
             is_active: boolean;
             /** Tenant Id */
@@ -689,6 +889,24 @@ export interface components {
              * @default false
              */
             is_env_admin: boolean;
+        };
+        /**
+         * UserProvisionRequest
+         * @description LDAP JIT 用户开通：为自动建档的用户补全团队归属与 OV 身份。
+         */
+        UserProvisionRequest: {
+            /** Tenant Id */
+            tenant_id: number;
+            /**
+             * Role
+             * @default user
+             * @enum {string}
+             */
+            role: "team_admin" | "user";
+            /** Ov User Id */
+            ov_user_id?: string | null;
+            /** Seed */
+            seed?: string | null;
         };
         /** UserResetPasswordRequest */
         UserResetPasswordRequest: {
@@ -786,7 +1004,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TokenResponse"];
+                    "application/json": components["schemas"]["LoginResponse"];
                 };
             };
             /** @description Validation Error */
@@ -866,6 +1084,123 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    ldap_bind_api_v1_auth_ldap_bind_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LdapBindRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_ldap_config_api_v1_auth_ldap_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LdapConfigOut"];
+                };
+            };
+        };
+    };
+    update_ldap_config_api_v1_auth_ldap_config_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LdapConfigUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LdapConfigOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_ldap_config_api_v1_auth_ldap_config_test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LdapConfigUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LdapTestResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
@@ -1110,6 +1445,41 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    provision_user_api_v1_users__user_id__provision_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserProvisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

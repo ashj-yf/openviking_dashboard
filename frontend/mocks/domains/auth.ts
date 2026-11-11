@@ -2,7 +2,7 @@ import { http, HttpResponse, type HttpHandler } from "msw";
 import type { Schema } from "@/types/api";
 
 type Me = Schema["MeOut"];
-type Token = Schema["TokenResponse"];
+type Login = Schema["LoginResponse"];
 
 const ROLE_BY_USERNAME: Record<string, Me["role"]> = {
   admin: "admin",
@@ -25,6 +25,9 @@ export function makeMe(overrides: Partial<Me> = {}): Me {
     must_change_password: false,
     last_login_at: null,
     is_env_admin: false,
+    auth_source: "local",
+    ldap_bound: false,
+    ldap_enabled: false,
     ...overrides,
   };
 }
@@ -48,9 +51,9 @@ export function resetAuthMock(next: Me | null = null): void {
   captured.length = 0;
 }
 
-function tokenFor(username: string): Token {
+function tokenFor(username: string): Login {
   const role = ROLE_BY_USERNAME[username] ?? "user";
-  return { access_token: `jwt-${username}`, token_type: "bearer", expires_in: 43200, role };
+  return { access_token: `jwt-${username}`, token_type: "bearer", expires_in: 43200, role, must_bind: false };
 }
 
 export const authHandlers: HttpHandler[] = [

@@ -18,6 +18,7 @@ export function makeUser(overrides: Partial<UserOut> = {}): UserOut {
     id: 3,
     username: "alice",
     role: "user",
+    auth_source: "local",
     is_active: true,
     tenant_id: 1,
     account_id: "acme",

@@ -60,6 +60,22 @@ describe("apiRequest", () => {
     expect(url).not.toContain("empty=");
   });
 
+  it("test_request_accepts_explicit_token_override", async () => {
+    // 显式 token（如 LDAP bind_token）必须覆盖 token-store 中的会话 token，
+    // 且覆盖值只作用于本次请求，不写入、不清除存储。
+    setToken("jwt-stored");
+    let seen = "";
+    server.use(
+      http.get("*/api/v1/tenants", ({ request }) => {
+        seen = request.headers.get("authorization") ?? "";
+        return HttpResponse.json([]);
+      }),
+    );
+    await apiRequest("GET", "/tenants", { token: "jwt-explicit" });
+    expect(seen).toBe("Bearer jwt-explicit");
+    expect(getToken()).toBe("jwt-stored");
+  });
+
   it("401 时清除 token、派发 authExpired 事件并抛出含 detail 的 ApiError", async () => {
     setToken("jwt-expired");
     const expired = vi.fn();
@@ -69,6 +85,23 @@ describe("apiRequest", () => {
     await expect(apiRequest("GET", "/auth/me")).rejects.toMatchObject({ status: 401, message: "未认证" });
     expect(getToken()).toBeNull();
     expect(expired).toHaveBeenCalledOnce();
+    authExpired.removeEventListener("expired", expired);
+  });
+
+  it("test_401_on_ldap_bind_path_does_not_broadcast_expired", async () => {
+    // 绑定端点的 401 意味着 bind_token 失效（走显式覆盖传入，不入 token-store），
+    // 与登录端点同理：不广播过期事件，401 语义不吞、仍抛 ApiError。
+    setToken("jwt-stale");
+    const expired = vi.fn();
+    authExpired.addEventListener("expired", expired);
+    server.use(
+      http.post("*/api/v1/auth/ldap/bind", () => HttpResponse.json({ detail: "未认证" }, { status: 401 })),
+    );
+
+    await expect(
+      apiRequest("POST", "/auth/ldap/bind", { token: "bind-jwt", body: { ldap_username: "u", ldap_password: "p" } }),
+    ).rejects.toMatchObject({ status: 401, message: "未认证" });
+    expect(expired).not.toHaveBeenCalled();
     authExpired.removeEventListener("expired", expired);
   });
 

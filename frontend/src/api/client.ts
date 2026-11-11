@@ -32,6 +32,8 @@ export interface RequestOptions {
   body?: unknown;
   query?: Record<string, string | number | null | undefined>;
   signal?: AbortSignal;
+  /** 显式覆盖 token-store 的凭据（如 LDAP bind_token），只作用于本次请求，不落存储。 */
+  token?: string;
 }
 
 function buildUrl(path: string, query?: RequestOptions["query"]): string {
@@ -91,7 +93,7 @@ export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const token = getToken();
+  const token = options.token ?? getToken();
   const headers: Record<string, string> = {};
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -112,8 +114,10 @@ export async function apiRequest<T>(
     const error = await parseError(response);
     if (response.status === 401) {
       clearToken();
-      // 登录端点的 401 是账密错误而非会话过期，不应广播过期事件、误导展示过期提示。
-      if (!path.endsWith("/auth/login")) {
+      // 登录 / LDAP 绑定端点的 401 是凭据错误而非会话过期，不应广播过期事件、误导展示过期提示。
+      const exemptFromExpiredBroadcast =
+        path.endsWith("/auth/login") || path.endsWith("/auth/ldap/bind");
+      if (!exemptFromExpiredBroadcast) {
         authExpired.dispatchEvent(new Event("expired"));
       }
     }
