@@ -26,6 +26,7 @@ export function makeUser(overrides: Partial<UserOut> = {}): UserOut {
     has_key: true,
     key_state: "current",
     key_synced_at: "2026-10-29T08:00:00Z",
+    is_env_admin: false,
     must_change_password: true,
     last_login_at: null,
     created_at: "2026-10-21T01:00:00Z",
