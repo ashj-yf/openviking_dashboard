@@ -16,6 +16,7 @@ from app.api.v1.users import router as users_router
 from app.core.config import ConfigError, get_settings, validate_settings
 from app.core.db import SessionLocal, engine
 from app.core.deps import DBSession
+from app.core.migrations import apply_schema_upgrades
 from app.models.base import Base
 from app.schemas.health import HealthResponse
 from app.services.auth_service import sync_first_admin
@@ -58,6 +59,10 @@ async def lifespan(app: FastAPI):
         raise SystemExit(str(exc))
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # create_all 不会改动既有表，旧库的新增列/索引在这里增量补齐
+        applied = await conn.run_sync(apply_schema_upgrades)
+    if applied:
+        logger.info("启动迁移已应用: %s", ", ".join(applied))
     async with SessionLocal() as db:
         try:
             await sync_first_admin(db, settings)
