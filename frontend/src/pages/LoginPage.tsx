@@ -32,6 +32,7 @@ export function LoginPage() {
   const [bindToken, setBindToken] = useState<string | null>(null);
   const [bindUsername, setBindUsername] = useState("");
   const [bindError, setBindError] = useState<string | null>(null);
+  const [loginForm] = Form.useForm<LoginFormValues>();
   const expired = (location.state as { expired?: boolean } | null)?.expired === true;
 
   // 仅在本地确有有效会话时弹回首页；401 过期场景 token 已清，me 缓存可能尚未刷新，
@@ -73,6 +74,8 @@ export function LoginPage() {
     try {
       await authApi.ldapBind(values.ldap_username, values.ldap_password, bindToken);
       message.success("绑定成功，请使用 LDAP 账号重新登录");
+      // 清登录表单：提示以 LDAP 账号重登，不得残留旧本地凭证诱导误重提。
+      loginForm.resetFields();
       closeBindModal();
     } catch (error) {
       setBindError(error instanceof ApiError ? error.message : "绑定失败，请稍后重试");
@@ -103,6 +106,7 @@ export function LoginPage() {
         )}
         {/* 弹窗期间封住主表单，避免绕过绑定直接用本地账号进入 */}
         <Form<LoginFormValues>
+          form={loginForm}
           onFinish={onFinish}
           layout="vertical"
           requiredMark={false}

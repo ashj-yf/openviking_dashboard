@@ -136,6 +136,9 @@ describe("LoginPage LDAP 绑定弹窗", () => {
     await waitFor(() => expect(screen.queryByText("绑定 LDAP 账号")).toBeNull());
     expect(screen.getByTestId("route")).toHaveTextContent("/login");
     expect(localStorage.getItem("ov-dashboard-token")).toBeNull();
+    // 清登录表单：成功提示要求以 LDAP 账号重登，不得残留旧本地凭证诱导误重提
+    expect(screen.getByLabelText("用户名")).toHaveValue("");
+    expect(screen.getByLabelText("密码")).toHaveValue("");
     // antd Form 逐键校验定时器使交互用例较慢，放宽预算，断言不变。
   }, 20000);
 
