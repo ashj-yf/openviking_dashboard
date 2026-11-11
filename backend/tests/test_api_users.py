@@ -729,6 +729,55 @@ async def test_provision_requires_platform_admin(
     assert r.status_code == 403, r.text
 
 
+async def test_provision_key_issue_failed_persists_half_product(
+    client, db, make_user, make_tenant, auth_headers, ldap_cfg, ov_calls
+):
+    chief = await make_user("chief", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    jit = await _make_jit_user(db, "zhangsan")
+    ov_calls["responses"].extend([
+        (200, {"user_id": "zhangsan"}),  # 注册成功
+        (500, {"detail": "boom"}),       # 补签失败 → _provision_failed 502
+    ])
+    r = await client.post(
+        f"/api/v1/users/{jit.id}/provision",
+        json={"tenant_id": t.id},
+        headers=auth_headers(chief),
+    )
+    assert r.status_code == 502
+    body = r.json()["detail"]
+    assert body["user_id"] == jit.id
+    assert body["ov_user_id"] == "zhangsan"
+    # 半成品落库：OV 归属保留，停用且无密文（对齐 create_user 半成品不变量）
+    await db.refresh(jit)
+    assert jit.tenant_id == t.id
+    assert jit.ov_user_id == "zhangsan"
+    assert jit.ov_role == "user"
+    assert jit.must_change_password is False
+    assert jit.is_active is False
+    assert jit.ov_user_key_encrypted is None
+    # 无 user.provision 审计；issue_failed 审计 detail 含 ov_user_id
+    provision_logs = (
+        await db.scalars(select(AuditLog).where(AuditLog.action == "user.provision"))
+    ).all()
+    assert provision_logs == []
+    fail_log = (
+        await db.scalars(
+            select(AuditLog).where(AuditLog.action == "user.key.issue_failed")
+        )
+    ).one()
+    assert json.loads(fail_log.detail_json) == {"ov_user_id": "zhangsan"}
+    # 既有复活机制：admin 重签 key 即复活半成品（无密文 → is_active=True + 签发）
+    ov_calls["responses"].append((200, {"key": "revive-key-123456"}))
+    r2 = await client.post(
+        f"/api/v1/users/{jit.id}/regenerate-key", json={}, headers=auth_headers(chief)
+    )
+    assert r2.status_code == 200, r2.text
+    await db.refresh(jit)
+    assert jit.is_active is True
+    assert jit.ov_user_key_encrypted is not None
+
+
 async def test_reset_password_blocked_for_ldap_user(
     client, db, make_user, auth_headers, ldap_cfg
 ):

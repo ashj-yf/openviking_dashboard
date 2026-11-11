@@ -198,8 +198,10 @@ async def provision_jit_user(
 ) -> DashboardUser:
     """LDAP JIT 用户开通：为自动建档用户补全团队归属并注册 OV、签发 key。
 
-    仅平台 admin 可操作；复用 create_user 的 OV 先行顺序——注册/签发失败
-    OpenVikingError 透传，本地零写入；key 到手后才更新本地行并审计。
+    仅平台 admin 可操作；复用 create_user 的 OV 先行顺序——注册失败
+    OpenVikingError 透传，本地零写入；注册成功即落半成品（停用且无密文，
+    保留 OV 归属），签发失败经 regenerate-key 可复活补救；签发成功则
+    激活并审计 user.provision。
     """
     if actor.role != "admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "仅平台管理员可执行开通操作")
@@ -222,21 +224,29 @@ async def provision_jit_user(
     register_resp = await admin_api.register_user(
         tenant.ov_account_id, ov_user_id, role=ov_role, seed=payload.seed
     )
-    new_key = await _issue_initial_key(
-        db, admin_api, actor, target,
-        register_resp=register_resp, tenant=tenant, ov_user_id=ov_user_id,
-        seed=payload.seed, ip=ip,
-    )
 
-    # key 到手才动本地行：团队归属、角色映射、OV 身份一次落库
+    # 注册成功即落本地归属，对齐 create_user 半成品不变量（停用且无密文）：
+    # 签发失败时保留 OV 归属，admin 可经 regenerate-key 复活补救（B4-R1）；
+    # is_active=False 在登录侧被 AUTH-1 停用拦截（不触 LDAP 凭据校验）
     target.tenant_id = tenant.id
     target.role = payload.role
     target.ov_role = ov_role
     target.ov_user_id = ov_user_id
     target.must_change_password = False
+    target.is_active = False
+    await db.commit()
+    await db.refresh(target)
+
+    new_key = await _issue_initial_key(
+        db, admin_api, actor, target,
+        register_resp=register_resp, tenant=tenant, ov_user_id=ov_user_id,
+        seed=payload.seed, ip=ip,
+    )
     await _store_fresh_key(
         db, target, new_key, seed_used=payload.seed is not None, issued_by=actor.id
     )
+    # 签发完成即恢复启用：半成品仅存在于签发失败的窗口期
+    target.is_active = True
     await db.commit()
     # 行已被外部创建，tenant 关系未必按 selectin 加载；路由要构造 UserOut，必须 refresh
     await db.refresh(target)
@@ -290,6 +300,7 @@ async def _provision_failed(db, actor, user, exc: OpenVikingError, ip) -> NoRetu
         {
             "message": "OpenViking 用户已创建但密钥签发失败，请稍后重试签发",
             "user_id": user.id,
+            "ov_user_id": user.ov_user_id,
         },
     )
 
