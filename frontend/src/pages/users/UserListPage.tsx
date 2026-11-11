@@ -69,7 +69,15 @@ export function UserListPage() {
     {
       title: "状态",
       dataIndex: "is_active",
-      render: (active: boolean) => (active ? <Tag color="blue">启用</Tag> : <Tag>停用</Tag>),
+      render: (active: boolean, record) =>
+        // JIT 未开通行（LDAP 自动建档、无归属）：以专用 Tag 标识，待 admin 开通
+        record.auth_source === "ldap" && record.tenant_id == null ? (
+          <Tag color="orange">未开通</Tag>
+        ) : active ? (
+          <Tag color="blue">启用</Tag>
+        ) : (
+          <Tag>停用</Tag>
+        ),
     },
     {
       title: "最近登录",
@@ -120,14 +128,17 @@ export function UserListPage() {
               value={keywordDraft}
               onChange={(e) => setKeywordDraft(e.target.value)}
             />
-            <Button
-              type="primary"
-              aria-label="开通用户"
-              icon={<PlusOutlined />}
-              onClick={() => setProvisionOpen(true)}
-            >
-              开通用户
-            </Button>
+            {/* LDAP 模式下本地创建入口整体隐藏：账号来源与 LDAP 单源互斥（admin/team_admin 一致） */}
+            {!me?.ldap_enabled && (
+              <Button
+                type="primary"
+                aria-label="开通用户"
+                icon={<PlusOutlined />}
+                onClick={() => setProvisionOpen(true)}
+              >
+                开通用户
+              </Button>
+            )}
           </Space>
         }
       >

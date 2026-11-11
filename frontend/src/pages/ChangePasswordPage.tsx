@@ -37,6 +37,24 @@ export function ChangePasswordPage() {
     );
   }
 
+  // LDAP 用户 UI 禁改密：口令由企业目录统一管理（后端 400 兜底）
+  if (me?.auth_source === "ldap") {
+    return (
+      <AuthLayout>
+        <Card style={{ width: 400 }}>
+          <Typography.Title level={3} style={{ marginTop: 0 }}>
+            修改密码
+          </Typography.Title>
+          <Alert
+            type="warning"
+            showIcon
+            message="密码由 LDAP 统一管理，请通过企业密码自助平台修改"
+          />
+        </Card>
+      </AuthLayout>
+    );
+  }
+
   async function onFinish(values: ChangePasswordFormValues) {
     setLoading(true);
     try {

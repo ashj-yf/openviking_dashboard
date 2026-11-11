@@ -7,6 +7,7 @@ export type UserRoleBody = Schema["UserRoleRequest"];
 export type UserResetPasswordBody = Schema["UserResetPasswordRequest"];
 export type KeyRegenerateBody = Schema["KeyRegenerateRequest"];
 export type UserSyncReport = Schema["UserSyncReport"];
+export type UserProvisionBody = Schema["UserProvisionRequest"];
 
 export const userApi = {
   list(params: { tenant_id?: number | null; keyword?: string | null } = {}): Promise<UserListItem[]> {
@@ -36,5 +37,9 @@ export const userApi = {
   },
   sync(id: number): Promise<UserSyncReport> {
     return apiRequest<UserSyncReport>("POST", `/users/${id}/sync`);
+  },
+  /** LDAP JIT 用户开通：为自动建档用户补全团队归属与 OV 身份。 */
+  provision(userId: number, payload: UserProvisionBody): Promise<UserListItem> {
+    return apiRequest<UserListItem>("POST", `/users/${userId}/provision`, { body: payload });
   },
 };

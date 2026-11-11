@@ -124,3 +124,45 @@ describe("超管账号 UI 保护", () => {
     expect(screen.queryByRole("button", { name: "提交" })).toBeNull();
   });
 });
+
+describe("LDAP 用户改密页提示", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("test_change_password_page_shows_ldap_hint_for_ldap_user", async () => {
+    localStorage.setItem("ov-dashboard-token", "jwt-alice");
+    resetAuthMock(
+      makeMe({
+        id: 3,
+        username: "alice",
+        role: "user",
+        auth_source: "ldap",
+        ldap_bound: true,
+        ldap_enabled: true,
+      }),
+    );
+    renderWithProviders(<AppRoutes />, { route: "/change-password" });
+
+    // 渲染提示卡而非表单（参照超管禁改模式）
+    expect(
+      await screen.findByText("密码由 LDAP 统一管理，请通过企业密码自助平台修改"),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("旧密码")).toBeNull();
+    expect(screen.queryByLabelText("新密码")).toBeNull();
+    expect(screen.queryByRole("button", { name: "提交" })).toBeNull();
+  });
+
+  it("test_change_password_form_still_renders_for_local_user", async () => {
+    localStorage.setItem("ov-dashboard-token", "jwt-alice");
+    resetAuthMock(
+      makeMe({ id: 3, username: "alice", role: "user", auth_source: "local" }),
+    );
+    renderWithProviders(<AppRoutes />, { route: "/change-password" });
+
+    expect(await screen.findByLabelText("旧密码")).toBeInTheDocument();
+    expect(screen.getByLabelText("新密码")).toBeInTheDocument();
+    expect(screen.getByLabelText("确认新密码")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "提交" })).toBeInTheDocument();
+  });
+});

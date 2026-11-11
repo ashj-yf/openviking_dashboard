@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { App, Button, Popconfirm, Select, Space, Switch, Tooltip } from "antd";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/api/client";
 import { userApi, type UserListItem } from "@/api/users";
 import { useAuth } from "@/auth/auth-context";
+import { ProvisionJitModal } from "./ProvisionJitModal";
 import { ResetPasswordModal } from "./ResetPasswordModal";
 import { RegenerateKeyModal } from "./RegenerateKeyModal";
 import { DeleteUserModal } from "./DeleteUserModal";
@@ -12,10 +14,13 @@ export function UserActions({ user }: { user: UserListItem }) {
   const { me } = useAuth();
   const { message } = App.useApp();
   const queryClient = useQueryClient();
+  const [provisionOpen, setProvisionOpen] = useState(false);
 
   const isSelf = me?.id === user.id;
   const isPlatformAdmin = me?.role === "admin";
   const targetIsTeamAdmin = user.role === "team_admin";
+  // JIT 未开通行：LDAP 自动建档但尚无团队归属，仅平台 admin 可为其开通（后端 403/409 兜底）。
+  const isUnprovisionedJit = user.auth_source === "ldap" && user.tenant_id == null;
   const canManage =
     isPlatformAdmin ||
     (me?.role === "team_admin" &&
@@ -43,7 +48,7 @@ export function UserActions({ user }: { user: UserListItem }) {
     return (
       <Tooltip title="仅平台管理员可操作团队管理员">
         <Space size={4} data-testid="user-actions" data-ready={me ? "true" : "false"}>
-          <Button size="small" disabled>重置密码</Button>
+          {user.auth_source !== "ldap" && <Button size="small" disabled>重置密码</Button>}
           <Button size="small" disabled>重签密钥</Button>
           <Button size="small" disabled>校准</Button>
         </Space>
@@ -53,6 +58,11 @@ export function UserActions({ user }: { user: UserListItem }) {
 
   return (
     <Space size={4} wrap data-testid="user-actions" data-ready="true">
+      {isPlatformAdmin && isUnprovisionedJit && (
+        <Button size="small" type="primary" onClick={() => setProvisionOpen(true)}>
+          开通账号
+        </Button>
+      )}
       {isPlatformAdmin && !isSelf && (
         <Select
           size="small"
@@ -65,7 +75,7 @@ export function UserActions({ user }: { user: UserListItem }) {
           ]}
         />
       )}
-      {!isSelf && <ResetPasswordModal user={user} />}
+      {!isSelf && user.auth_source !== "ldap" && <ResetPasswordModal user={user} />}
       {user.ov_user_id && <RegenerateKeyModal user={user} />}
       {!isSelf &&
         (user.is_active ? (
@@ -90,6 +100,13 @@ export function UserActions({ user }: { user: UserListItem }) {
         ))}
       {user.ov_user_id && <UserSyncModal user={user} />}
       {!isSelf && <DeleteUserModal user={user} />}
+      {isPlatformAdmin && isUnprovisionedJit && (
+        <ProvisionJitModal
+          open={provisionOpen}
+          user={user}
+          onClose={() => setProvisionOpen(false)}
+        />
+      )}
     </Space>
   );
 }

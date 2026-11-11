@@ -6,4 +6,5 @@ export const qk = {
   tenant: (id: number) => ["tenant", id] as const,
   users: (filters: { tenant_id?: number | null; keyword?: string | null }) =>
     ["users", filters.tenant_id ?? null, filters.keyword ?? ""] as const,
+  ldapConfig: ["ldapConfig"] as const,
 };

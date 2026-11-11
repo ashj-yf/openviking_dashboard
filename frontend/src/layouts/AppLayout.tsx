@@ -4,6 +4,7 @@ import type { MenuProps } from "antd";
 import {
   KeyOutlined,
   LogoutOutlined,
+  SafetyCertificateOutlined,
   TeamOutlined,
   UserOutlined,
 } from "@ant-design/icons";
@@ -29,6 +30,7 @@ export function buildUserMenu(isEnvAdmin: boolean): MenuProps["items"] {
 const NAV_ITEMS: { key: string; label: string; permission: Permission; icon: ReactNode }[] = [
   { key: "/tenants", label: "团队管理", permission: "tenants:manage", icon: <TeamOutlined /> },
   { key: "/users", label: "用户管理", permission: "users:manage", icon: <UserOutlined /> },
+  { key: "/ldap-config", label: "LDAP 认证", permission: "ldap:manage", icon: <SafetyCertificateOutlined /> },
   { key: "/credentials", label: "我的凭证", permission: "credentials:view", icon: <KeyOutlined /> },
 ];
 

@@ -2,7 +2,7 @@ import { http, HttpResponse, type HttpHandler } from "msw";
 import type { Schema } from "@/types/api";
 
 type Me = Schema["MeOut"];
-type Token = Schema["TokenResponse"];
+type Login = Schema["LoginResponse"];
 
 const ROLE_BY_USERNAME: Record<string, Me["role"]> = {
   admin: "admin",
@@ -25,6 +25,9 @@ export function makeMe(overrides: Partial<Me> = {}): Me {
     must_change_password: false,
     last_login_at: null,
     is_env_admin: false,
+    auth_source: "local",
+    ldap_bound: false,
+    ldap_enabled: false,
     ...overrides,
   };
 }
@@ -42,15 +45,50 @@ export function getAuthRequests(method?: string): CapturedAuthRequest[] {
   return method ? captured.filter((r) => r.method === method) : [...captured];
 }
 
+/** 记录 /auth/ldap/bind 请求的 Authorization 头，用于断言 bind_token 显式携带而非取自 token-store。 */
+const capturedBindAuthHeaders: (string | null)[] = [];
+
 /** 每个测试 beforeEach 调用；传入 makeMe(...) 模拟已登录会话，null 模拟未登录。 */
 export function resetAuthMock(next: Me | null = null): void {
   me = next;
   captured.length = 0;
+  capturedBindAuthHeaders.length = 0;
 }
 
-function tokenFor(username: string): Token {
+export function getBindAuthHeaders(): (string | null)[] {
+  return [...capturedBindAuthHeaders];
+}
+
+/** LDAP 绑定流：login 覆盖为 must_bind 形态——不签发会话（access_token 空串），附短时 bind_token。 */
+export function mustBindLoginHandler(bindToken = "bind-jwt-test"): HttpHandler {
+  return http.post("*/api/v1/auth/login", async ({ request }) => {
+    const body = (await request.json()) as { username: string };
+    return HttpResponse.json({
+      access_token: "",
+      token_type: "bearer",
+      expires_in: 0,
+      role: ROLE_BY_USERNAME[body.username] ?? "user",
+      must_bind: true,
+      bind_token: bindToken,
+    });
+  });
+}
+
+/** LDAP 绑定流：POST /auth/ldap/bind；fail=true 模拟 LDAP 校验失败（对象 detail，与 apiRequest 错误解析对齐）。 */
+export function ldapBindHandler(fail = false): HttpHandler {
+  return http.post("*/api/v1/auth/ldap/bind", async ({ request }) => {
+    capturedBindAuthHeaders.push(request.headers.get("authorization"));
+    captured.push({ method: "POST", url: request.url, body: await request.clone().json() });
+    if (fail) {
+      return HttpResponse.json({ detail: { message: "LDAP 账号或密码错误" } }, { status: 401 });
+    }
+    return new HttpResponse(null, { status: 204 });
+  });
+}
+
+function tokenFor(username: string): Login {
   const role = ROLE_BY_USERNAME[username] ?? "user";
-  return { access_token: `jwt-${username}`, token_type: "bearer", expires_in: 43200, role };
+  return { access_token: `jwt-${username}`, token_type: "bearer", expires_in: 43200, role, must_bind: false };
 }
 
 export const authHandlers: HttpHandler[] = [
