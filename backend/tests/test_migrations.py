@@ -1,5 +1,5 @@
 """启动迁移测试：旧库补列 + 唯一索引，新库幂等跳过。"""
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.exc import IntegrityError
 
 from app.core.migrations import apply_schema_upgrades
@@ -28,6 +28,10 @@ _LEGACY_INSERT_SQL = (
     "must_change_password) VALUES (:username, :password_hash, :role, 1, 0)"
 )
 
+# 迁移重建会显式恢复连接级外键（PRAGMA foreign_keys=ON）；重建出的
+# dashboard_users 带 tenants 外键，测试库需有父表，迁移后的 INSERT 才可行
+_TENANTS_CREATE_SQL = "CREATE TABLE tenants (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT)"
+
 
 def _index_names(conn) -> set[str]:
     return {ix["name"] for ix in inspect(conn).get_indexes("dashboard_users")}
@@ -40,6 +44,7 @@ def _column_names(conn) -> set[str]:
 def test_migration_on_legacy_db_adds_columns_and_unique_index(tmp_path):
     legacy_engine = create_engine(f"sqlite:///{tmp_path / 'legacy.db'}")
     with legacy_engine.begin() as conn:
+        conn.execute(text(_TENANTS_CREATE_SQL))
         conn.execute(text(_LEGACY_CREATE_SQL))
         conn.execute(
             text(_LEGACY_INSERT_SQL),
@@ -99,6 +104,7 @@ def test_migration_rebuilds_legacy_table_to_nullable_password_hash(tmp_path):
     legacy_hash = "x" * 60
     legacy_engine = create_engine(f"sqlite:///{tmp_path / 'legacy.db'}")
     with legacy_engine.begin() as conn:
+        conn.execute(text(_TENANTS_CREATE_SQL))
         conn.execute(text(_LEGACY_CREATE_SQL))
         conn.execute(
             text(_LEGACY_INSERT_SQL),
@@ -152,4 +158,67 @@ def test_migration_rebuilds_legacy_table_to_nullable_password_hash(tmp_path):
         applied_again = apply_schema_upgrades(conn)
         assert not any("rebuild" in action for action in applied_again)
         assert not any("ADD COLUMN" in action for action in applied_again)
+    engine.dispose()
+
+
+def _fk_on_engine(path) -> "create_engine":
+    """与 app.core.db 同款：连接级开启外键约束的引擎。"""
+    engine = create_engine(path)
+
+    @event.listens_for(engine, "connect")
+    def _fk_on(dbapi_conn, _):
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+    return engine
+
+
+def test_migration_rebuild_preserves_audit_actor_during_fk_actions(tmp_path):
+    """R2：重建期间关闭外键动作，audit_logs.actor_user_id 归因原样保留。
+
+    生产引擎连接级开启 PRAGMA foreign_keys；若重建未按官方规程先关闭外键，
+    DROP 父表的隐式 DELETE 会把子表 actor_user_id 一次性置空，审计归因丢失。
+    """
+    legacy_engine = create_engine(f"sqlite:///{tmp_path / 'legacy.db'}")
+    with legacy_engine.begin() as conn:
+        conn.execute(text(_LEGACY_CREATE_SQL))
+        conn.execute(
+            text(_LEGACY_INSERT_SQL),
+            {"username": "legacy_user", "password_hash": "x" * 60, "role": "user"},
+        )
+        # 最小 audit_logs：与 AuditLog 模型一致的外键形态（ondelete=SET NULL）
+        conn.execute(text(
+            "CREATE TABLE audit_logs ("
+            " id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,"
+            " actor_user_id INTEGER REFERENCES dashboard_users (id) ON DELETE SET NULL,"
+            " actor_name VARCHAR(64) NOT NULL,"
+            " action VARCHAR(64) NOT NULL)"
+        ))
+        conn.execute(text(
+            "INSERT INTO audit_logs (actor_user_id, actor_name, action)"
+            " VALUES ((SELECT id FROM dashboard_users WHERE username = 'legacy_user'),"
+            " 'legacy_user', 'auth.login.success')"
+        ))
+    legacy_engine.dispose()
+
+    engine = _fk_on_engine(f"sqlite:///{tmp_path / 'legacy.db'}")
+    with engine.begin() as conn:
+        applied = apply_schema_upgrades(conn)
+        assert any("rebuild" in action for action in applied)
+        # 官方规程收尾的 foreign_key_check：整库无外键违规
+        assert conn.execute(text("PRAGMA foreign_key_check")).fetchall() == []
+        # 归因保全：actor_user_id 原样指向重建后的 legacy 用户行（id 不变）
+        audit = conn.execute(text(
+            "SELECT actor_user_id, actor_name FROM audit_logs"
+        )).one()
+        user_id = conn.execute(text(
+            "SELECT id FROM dashboard_users WHERE username = 'legacy_user'"
+        )).scalar_one()
+        assert audit.actor_user_id == user_id
+        assert audit.actor_name == "legacy_user"
+
+    # 连接池化复用：connect 事件不会重放，外键必须由迁移显式恢复为 ON
+    with engine.begin() as conn:
+        assert conn.execute(text("PRAGMA foreign_keys")).scalar() == 1
     engine.dispose()

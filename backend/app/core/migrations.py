@@ -67,11 +67,17 @@ def _password_hash_is_not_null(sync_conn: Connection) -> bool:
 def _rebuild_dashboard_users_table(sync_conn: Connection) -> None:
     """按当前模型重建 dashboard_users：新表 DDL 由模型编译生成，保证零漂移。
 
-    SQLite 无 ALTER MODIFY，只能整表重建：建 dashboard_users_new → 按"共有
-    列名"对齐搬运数据（模型有而旧表还没有的列，由新表列默认值兜底）→
-    DROP 旧表 → RENAME 回原名 → 按模型逐个重建索引（DROP 会连带丢掉
-    username/tenant_id 普通索引与 ldap_username 唯一索引，必须补回；随后的
-    唯一索引 IF NOT EXISTS 步骤照常幂等）。
+    遵循 sqlite.org/lang_altertable 官方重建规程：先在迁移连接上关闭外键
+    （PRAGMA foreign_keys 仅在无挂起事务时生效，关闭后立即回读校验，失效
+    即抛异常——外键动作生效时 DROP 父表会把 audit_logs.actor_user_id 静默
+    置空，审计归因不可丢）；重建后 PRAGMA foreign_key_check 校验无违规，
+    最后显式恢复 ON（连接池化复用，connect 事件不会重放，不能依赖隐式恢复）。
+
+    重建本体：建 dashboard_users_new → 按"共有列名"对齐搬运数据（模型有而
+    旧表还没有的列，由新表列默认值兜底）→ DROP 旧表 → RENAME 回原名 → 按
+    模型逐个重建索引（DROP 会连带丢掉 username/tenant_id 普通索引与
+    ldap_username 唯一索引，必须补回；随后的唯一索引 IF NOT EXISTS 步骤
+    照常幂等）。
     """
     from sqlalchemy import Column, Integer, Table
     from sqlalchemy.schema import CreateTable
@@ -81,24 +87,46 @@ def _rebuild_dashboard_users_table(sync_conn: Connection) -> None:
     existing = {col["name"] for col in inspect(sync_conn).get_columns("dashboard_users")}
     shared = [col.name for col in table.columns if col.name in existing]
 
-    # 新表拷进临时 metadata；放一个最小 tenants 影子表，供 tenant_id 外键在
-    # DDL 编译时解析引用目标（不会创建影子表，仅影响编译出的 REFERENCES 文本）
-    tmp_metadata = MetaData()
-    Table("tenants", tmp_metadata, Column("id", Integer, primary_key=True))
-    new_table = table.to_metadata(tmp_metadata, name=f"{table.name}_new")
-    # SQLite 驱动对 DDL 隐式提交：若上次重建中途被打断，可能残留 _new 表，
-    # 先行清除保证重建可重入
-    sync_conn.execute(text("DROP TABLE IF EXISTS dashboard_users_new"))
-    sync_conn.execute(text(str(CreateTable(new_table).compile(dialect=sqlite.dialect()))))
-    column_list = ", ".join(shared)
-    sync_conn.execute(
-        text(
-            f"INSERT INTO dashboard_users_new ({column_list}) "
-            f"SELECT {column_list} FROM dashboard_users"
+    sync_conn.execute(text("PRAGMA foreign_keys=OFF"))
+    if sync_conn.execute(text("PRAGMA foreign_keys")).scalar():
+        # OFF 未生效（连接存在挂起事务时该 PRAGMA 是 no-op）：拒绝重建，
+        # 防止外键动作生效时 DROP 父表静默置空 audit_logs 归因
+        raise RuntimeError(
+            "无法关闭外键约束（连接存在挂起事务），拒绝重建 dashboard_users："
+            "外键动作生效时 DROP 父表会置空 audit_logs 归因"
         )
-    )
-    sync_conn.execute(text("DROP TABLE dashboard_users"))
-    sync_conn.execute(text("ALTER TABLE dashboard_users_new RENAME TO dashboard_users"))
-    # DROP 旧表连带丢掉其全部索引：按模型逐个补回（含 ldap_username 唯一索引）
-    for index in sorted(table.indexes, key=lambda ix: ix.name or ""):
-        index.create(sync_conn)
+    try:
+        # 新表拷进临时 metadata；放一个最小 tenants 影子表，供 tenant_id 外键在
+        # DDL 编译时解析引用目标（不会创建影子表，仅影响编译出的 REFERENCES 文本）
+        tmp_metadata = MetaData()
+        Table("tenants", tmp_metadata, Column("id", Integer, primary_key=True))
+        new_table = table.to_metadata(tmp_metadata, name=f"{table.name}_new")
+        # DDL 隐式提交：若上次重建中途被打断，可能残留 _new 表，先行清除保证可重入
+        sync_conn.execute(text("DROP TABLE IF EXISTS dashboard_users_new"))
+        sync_conn.execute(text(str(CreateTable(new_table).compile(dialect=sqlite.dialect()))))
+        column_list = ", ".join(shared)
+        sync_conn.execute(
+            text(
+                f"INSERT INTO dashboard_users_new ({column_list}) "
+                f"SELECT {column_list} FROM dashboard_users"
+            )
+        )
+        sync_conn.execute(text("DROP TABLE dashboard_users"))
+        sync_conn.execute(text("ALTER TABLE dashboard_users_new RENAME TO dashboard_users"))
+        # DROP 旧表连带丢掉其全部索引：按模型逐个补回（含 ldap_username 唯一索引）
+        for index in sorted(table.indexes, key=lambda ix: ix.name or ""):
+            index.create(sync_conn)
+        # 官方规程顺序：先提交重建事务（否则 PRAGMA foreign_keys=ON 因存在
+        # 挂起事务而静默失效），再做外键校验，最后恢复外键。在 engine.begin()
+        # 上下文里不能关 SQLAlchemy 事务对象，故走 DBAPI 层提交（pysqlite
+        # legacy 语义下 DDL 本就逐步自动提交，提前提交不改变可观测语义）
+        sync_conn.connection.commit()
+        violations = sync_conn.execute(text("PRAGMA foreign_key_check")).fetchall()
+        if violations:
+            names = "、".join(sorted({str(row[0]) for row in violations}))
+            raise RuntimeError(
+                f"dashboard_users 重建后外键校验失败，违规涉及表: {names}；"
+                "请先修复存量数据再启动"
+            )
+    finally:
+        sync_conn.execute(text("PRAGMA foreign_keys=ON"))
