@@ -9,10 +9,13 @@ import { useAuth } from "@/auth/auth-context";
 import { homePathFor, type Role } from "@/auth/permissions";
 import { AppLayout } from "@/layouts/AppLayout";
 import { ChangePasswordPage } from "@/pages/ChangePasswordPage";
+import { CredentialsPage } from "@/pages/credentials/CredentialsPage";
 import { ForbiddenPage } from "@/pages/errors/ForbiddenPage";
 import { NotFoundPage } from "@/pages/errors/NotFoundPage";
 import { LoginPage } from "@/pages/LoginPage";
+import { TenantDetailPage } from "@/pages/tenants/TenantDetailPage";
 import { TenantListPage } from "@/pages/tenants/TenantListPage";
+import { UserListPage } from "@/pages/users/UserListPage";
 import { getToken } from "@/auth/token-store";
 
 /** 监听 401 事件，统一跳登录（Api client 已在此前清除 token）。 */
@@ -83,10 +86,6 @@ function HomeRedirect() {
   return <Navigate to={homePathFor(me?.role)} replace />;
 }
 
-function PlaceholderPage({ title }: { title: string }) {
-  return <div data-testid="landing-placeholder">{title}页（待实现）</div>;
-}
-
 export function AppRoutes() {
   return (
     <>
@@ -107,9 +106,30 @@ export function AppRoutes() {
                     </RequireRole>
                   }
                 />
-                {/* 落地占位：T6/T8 分别替换为带 RequireRole 的真实页面 */}
-                <Route path="/users" element={<PlaceholderPage title="用户管理" />} />
-                <Route path="/credentials" element={<PlaceholderPage title="我的凭证" />} />
+                <Route
+                  path="/tenants/:id"
+                  element={
+                    <RequireRole allow="admin">
+                      <TenantDetailPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/users"
+                  element={
+                    <RequireRole allow={["admin", "team_admin"]}>
+                      <UserListPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/credentials"
+                  element={
+                    <RequireRole allow={["team_admin", "user"]}>
+                      <CredentialsPage />
+                    </RequireRole>
+                  }
+                />
                 <Route path="/403" element={<ForbiddenPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>

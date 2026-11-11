@@ -1,7 +1,7 @@
 import { http, HttpResponse, type HttpHandler } from "msw";
-import type { Schema } from "@/types/api";
+import type { HealthResponse } from "@/api/client";
 
-type Health = Schema["HealthResponse"];
+type Health = HealthResponse;
 
 const DEFAULT_HEALTH: Health = {
   status: "ok",

@@ -3,7 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import { useLocation } from "react-router-dom";
 import { renderWithProviders } from "@/test/utils";
 import { AppRoutes } from "@/router/AppRoutes";
-import { makeMe, resetAuthMock } from "@mocks/domains/auth";
+import { getAuthRequests, makeMe, resetAuthMock } from "@mocks/domains/auth";
 
 function RouteProbe() {
   const location = useLocation();
@@ -59,6 +59,33 @@ describe("强制改密门禁与改密页", () => {
       expect(screen.getByTestId("route")).toHaveTextContent("/credentials"),
     );
     // jsdom 下三段 type + 提交往返在高负载机器上超过默认 10s 预算；仅放宽时间，断言不变。
+  }, 20000);
+
+  it("改密页提供注销并切换账号出口：调用登出端点、清除会话并落地登录页", async () => {
+    localStorage.setItem("ov-dashboard-token", "jwt-alice");
+    resetAuthMock(makeMe({ id: 3, username: "alice", role: "user", must_change_password: true }));
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <RouteProbe />
+        <AppRoutes />
+      </>,
+      { route: "/change-password" },
+    );
+
+    await screen.findByRole("heading", { name: "修改密码" });
+    await user.click(screen.getByRole("button", { name: "注销并切换账号" }));
+
+    await waitFor(() =>
+      expect(getAuthRequests("POST").some((r) => r.url.includes("/auth/logout"))).toBe(true),
+    );
+    await waitFor(() => expect(screen.getByTestId("route")).toHaveTextContent("/login"));
+    expect(localStorage.getItem("ov-dashboard-token")).toBeNull();
+    expect(
+      await screen.findByRole("heading", { name: "OpenViking 管理后台" }),
+    ).toBeInTheDocument();
+    // 强改密用户登出后不被门禁弹回改密页。
+    expect(screen.queryByRole("heading", { name: "修改密码" })).toBeNull();
   }, 20000);
 
   it("旧密码错误时停留在改密页并显示后端文案", async () => {

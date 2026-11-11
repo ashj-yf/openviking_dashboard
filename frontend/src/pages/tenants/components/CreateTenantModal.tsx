@@ -55,7 +55,7 @@ export function CreateTenantModal({ open, onClose }: Props) {
       onOk={() => form.submit()}
       confirmLoading={mutation.isPending}
       okText="创建"
-      destroyOnClose
+      destroyOnHidden
     >
       {topError && (
         <Alert type="error" showIcon style={{ marginBottom: 16 }} message={topError} />
@@ -110,7 +110,7 @@ export function CreateTenantModal({ open, onClose }: Props) {
           <Input.TextArea maxLength={500} rows={2} />
         </Form.Item>
         <Collapse
-          destroyInactivePanel
+          destroyOnHidden
           items={[
             {
               key: "advanced",

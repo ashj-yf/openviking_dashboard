@@ -1,4 +1,4 @@
-import { Alert, App, Button, Card, Form, Input, Typography } from "antd";
+import { Alert, App, Button, Card, Form, Input, Space, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/auth/auth-context";
@@ -13,10 +13,11 @@ interface ChangePasswordFormValues {
 }
 
 export function ChangePasswordPage() {
-  const { me, changePassword } = useAuth();
+  const { me, changePassword, logout } = useAuth();
   const navigate = useNavigate();
   const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   // 超管账号 UI 禁改密：密码仅可经 .env 配置修改后重启生效（01 AUTH-3）
   if (me?.is_env_admin) {
@@ -46,6 +47,17 @@ export function ChangePasswordPage() {
       message.error(error instanceof ApiError ? error.message : "修改失败，请稍后重试");
     } finally {
       setLoading(false);
+    }
+  }
+
+  // 强改密门禁没有其他出口，提供换账号通道：走全局注销（清 token 与 me 缓存）后回登录页。
+  async function onLogout() {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setLoggingOut(false);
+      navigate("/login", { replace: true });
     }
   }
 
@@ -98,9 +110,14 @@ export function ChangePasswordPage() {
             <Input.Password autoComplete="new-password" />
           </Form.Item>
           <Form.Item style={{ marginBottom: 0 }}>
-            <Button type="primary" htmlType="submit" block loading={loading}>
-              提交
-            </Button>
+            <Space direction="vertical" size={8} style={{ width: "100%" }}>
+              <Button type="primary" htmlType="submit" block loading={loading}>
+                提交
+              </Button>
+              <Button block loading={loggingOut} onClick={onLogout}>
+                注销并切换账号
+              </Button>
+            </Space>
           </Form.Item>
         </Form>
       </Card>

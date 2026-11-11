@@ -66,6 +66,24 @@ npm install
 npm run dev            # http://127.0.0.1:5173 ，/api 自动代理到 8000
 ```
 
+## 本地开发
+
+前端（`frontend/`，Node 22 + npm）：
+
+```bash
+cd frontend
+npm install
+npm run dev          # http://localhost:5173；默认启用 MSW 模拟接口，无需后端
+npm test             # Vitest 全量用例
+npm run build        # 类型检查 + 生产构建
+```
+
+- 连接真实后端开发：`VITE_MOCK=false npm run dev`，Vite 将 `/api` 与 `/healthz`
+  代理到 `http://localhost:8000`（后端在 `backend/` 下 `uv run uvicorn app.main:app --reload`）。
+- 契约：`contract/openapi.json` 是前后端并行期间的唯一契约源；后端接口变更后先更新快照，
+  `npm run gen:api` 重新生成 TS 类型。后端合并后执行
+  `npm run contract:check` 做真实 `/openapi.json` 子集核对（join 门禁）。
+
 ## 对接的 OpenViking 端点（v0.4.x OpenAPI 实测）
 
 | 用途 | 方法 & 路径 |
