@@ -169,6 +169,7 @@ async def test_audit_filters_like_wildcard_is_literal(client, db, make_user, aut
     admin = await make_user("rootadmin", "Admin#12345", "admin")
     await audit_service.record(db, "%export", actor=admin)
     await audit_service.record(db, "auth.login.success", actor=admin)
+    await audit_service.record(db, "auth.login.success", actor_name="svc%name")
 
     # action=%：若 % 被当通配符会命中全部行；字面匹配只命中以 % 开头的行
     r = await client.get(
@@ -183,6 +184,14 @@ async def test_audit_filters_like_wildcard_is_literal(client, db, make_user, aut
         "/api/v1/audit-logs", params={"action": "a%"}, headers=auth_headers(admin)
     )
     assert r.json()["total"] == 0
+
+    # actor=%：contains 同样字面匹配，只命中 actor_name 含字面 % 的行
+    r = await client.get(
+        "/api/v1/audit-logs", params={"actor": "%"}, headers=auth_headers(admin)
+    )
+    body = r.json()
+    assert body["total"] == 1
+    assert body["items"][0]["actor_name"] == "svc%name"
 
 
 async def test_audit_filters_tz_aware_normalized_to_utc(client, db, make_user, auth_headers):
@@ -217,6 +226,21 @@ async def test_audit_filters_tz_aware_normalized_to_utc(client, db, make_user, a
         headers=auth_headers(admin),
     )
     assert r.json()["total"] == 1
+
+    # end 对称：+08:00 次日零点归一为 UTC 2026-01-01T16:00:00，行在界内（<=）
+    r = await client.get(
+        "/api/v1/audit-logs",
+        params={"actor": "bob", "end": "2026-01-02T00:00:00+08:00"},
+        headers=auth_headers(admin),
+    )
+    assert r.json()["total"] == 1
+    # 归一后早于行 1 秒（UTC 2025-12-31T23:59:59），排除边界
+    r = await client.get(
+        "/api/v1/audit-logs",
+        params={"actor": "bob", "end": "2026-01-01T07:59:59+08:00"},
+        headers=auth_headers(admin),
+    )
+    assert r.json()["total"] == 0
 
 
 async def test_ov_audit_admin_only(client, make_user, make_tenant, auth_headers):

@@ -2,6 +2,7 @@
 import json
 import logging
 from datetime import datetime, timezone
+from typing import cast
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -100,8 +101,10 @@ async def list_logs(
             )
         )
 
-    total = await db.scalar(
-        select(func.count()).select_from(AuditLog).where(*conditions)
+    # count(*) 聚合恒返回一行，scalar 的 None 分支不可达
+    total = cast(
+        int,
+        await db.scalar(select(func.count()).select_from(AuditLog).where(*conditions)),
     )
     rows = (
         await db.scalars(
