@@ -83,9 +83,25 @@ class OVClient:
         url = f"{self.base_url}{path}"
         start = time.monotonic()
         async with httpx.AsyncClient(timeout=self.timeout, transport=_test_transport) as client:
-            resp = await client.request(
-                method, url, json=json, params=params, headers=self._headers()
-            )
+            try:
+                resp = await client.request(
+                    method, url, json=json, params=params, headers=self._headers()
+                )
+            except httpx.HTTPError as exc:
+                # 连接级异常（ConnectError/TimeoutException 等）统一包装为 503，
+                # 供分节降级与全局 handler 语义复用；消息只含异常类型名，
+                # 不含 URL 参数与密钥。
+                elapsed_ms = (time.monotonic() - start) * 1000
+                logger.warning(
+                    "ov_request method=%s path=%s status=503 elapsed_ms=%.1f error=%s",
+                    method,
+                    path,
+                    elapsed_ms,
+                    type(exc).__name__,
+                )
+                raise OpenVikingError(
+                    503, f"OpenViking 连接失败: {type(exc).__name__}", path
+                ) from exc
         elapsed_ms = (time.monotonic() - start) * 1000
         # 只记录方法/路径/状态码/耗时；禁止记录 headers、body、params 与 api_key。
         logger.info(

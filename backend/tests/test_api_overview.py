@@ -1,4 +1,5 @@
 """总览聚合路由：本地 KPI、OV 分节降级、observer 并发与 RBAC。"""
+import httpx
 
 OBSERVER_COMPONENTS = (
     "queue",
@@ -147,3 +148,44 @@ async def test_observer_single_and_unknown(client, make_user, auth_headers, ov_c
     assert r.status_code == 404
     # 未知组件在校验层即拒绝，不产生 OV 调用
     assert len(ov_calls["calls"]) == 1
+
+
+async def test_network_error_wrapped_503(client, make_user, make_tenant, auth_headers, ov_mock):
+    """OV 端口不通（httpx 连接级异常）统一包装 503：分节降级 / observer 全降级 / 透传 503。"""
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t1 = await make_tenant("net-t1")
+    await make_user("u1", "Passw0rd!", "user", tenant=t1)
+
+    def _boom(_req: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("boom")
+
+    # 临时替换 ov_calls 同款 holder：handler 抛连接级异常模拟 OV 端口不通
+    ov_mock["handler"] = _boom
+
+    # summary：OV 两节均 503 降级 → 仍 200，本地 KPI 在，ov_error 非空
+    r = await client.get("/api/v1/overview/summary", headers=auth_headers(admin))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["tenant_count"] == 1
+    assert body["users_total"] == 1
+    assert body["ov_summary"] is None
+    assert body["ov_health"] is None
+    assert body["ov_error"]
+    assert "ConnectError" in body["ov_error"]
+
+    # observer：七组件全部降级为 error，不 500
+    r = await client.get("/api/v1/overview/observer", headers=auth_headers(admin))
+    assert r.status_code == 200
+    components = r.json()["components"]
+    assert set(components) == set(OBSERVER_COMPONENTS)
+    for name in OBSERVER_COMPONENTS:
+        assert components[name]["data"] is None
+        assert components[name]["error"] is not None
+        assert "ConnectError" in components[name]["error"]
+
+    # audit-logs/ov：透传接口不降级，冒泡走全局 handler → 503 + ov_status=503
+    r = await client.get("/api/v1/audit-logs/ov", headers=auth_headers(admin))
+    assert r.status_code == 503
+    body = r.json()
+    assert body["ov_status"] == 503
+    assert "ConnectError" in body["detail"]
