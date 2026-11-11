@@ -1,1 +1,2720 @@
-{"openapi":"3.1.0","info":{"title":"OpenViking Dashboard","version":"0.1.0"},"paths":{"/healthz":{"get":{"tags":["system"],"summary":"Healthz","operationId":"healthz_healthz_get","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HealthResponse"}}}}}}},"/api/v1/auth/login":{"post":{"tags":["auth"],"summary":"Login","operationId":"login_api_v1_auth_login_post","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/LoginRequest"}}},"required":true},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/LoginResponse"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/v1/auth/me":{"get":{"tags":["auth"],"summary":"Me","operationId":"me_api_v1_auth_me_get","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/MeOut"}}}}},"security":[{"HTTPBearer":[]}]}},"/api/v1/auth/change-password":{"post":{"tags":["auth"],"summary":"Change Password","operationId":"change_password_api_v1_auth_change_password_post","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChangePasswordRequest"}}},"required":true},"responses":{"204":{"description":"Successful Response"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}},"security":[{"HTTPBearer":[]}]}},"/api/v1/auth/logout":{"post":{"tags":["auth"],"summary":"Logout","operationId":"logout_api_v1_auth_logout_post","responses":{"204":{"description":"Successful Response"}},"security":[{"HTTPBearer":[]}]}},"/api/v1/auth/ldap/bind":{"post":{"tags":["auth"],"summary":"Ldap Bind","operationId":"ldap_bind_api_v1_auth_ldap_bind_post","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/LdapBindRequest"}}},"required":true},"responses":{"204":{"description":"Successful Response"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}},"security":[{"HTTPBearer":[]}]}},"/api/v1/auth/ldap-config":{"get":{"tags":["auth"],"summary":"Get Ldap Config","operationId":"get_ldap_config_api_v1_auth_ldap_config_get","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/LdapConfigOut"}}}}},"security":[{"HTTPBearer":[]}]},"put":{"tags":["auth"],"summary":"Update Ldap Config","operationId":"update_ldap_config_api_v1_auth_ldap_config_put","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/LdapConfigUpdate"}}},"required":true},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/LdapConfigOut"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}},"security":[{"HTTPBearer":[]}]}},"/api/v1/auth/ldap-config/test":{"post":{"tags":["auth"],"summary":"Test Ldap Config","operationId":"test_ldap_config_api_v1_auth_ldap_config_test_post","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/LdapConfigUpdate"}}},"required":true},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/LdapTestResult"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}},"security":[{"HTTPBearer":[]}]}},"/api/v1/tenants":{"get":{"tags":["tenants"],"summary":"List Tenants","operationId":"list_tenants_api_v1_tenants_get","security":[{"HTTPBearer":[]}],"parameters":[{"name":"q","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Q"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}},"post":{"tags":["tenants"],"summary":"Create Tenant","operationId":"create_tenant_api_v1_tenants_post","security":[{"HTTPBearer":[]}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TenantCreateRequest"}}}},"responses":{"201":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/TenantCreatedOut"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/v1/tenants/{tenant_id}":{"get":{"tags":["tenants"],"summary":"Get Tenant","operationId":"get_tenant_api_v1_tenants__tenant_id__get","security":[{"HTTPBearer":[]}],"parameters":[{"name":"tenant_id","in":"path","required":true,"schema":{"type":"integer","title":"Tenant Id"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/TenantDetailOut"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}},"patch":{"tags":["tenants"],"summary":"Update Tenant","operationId":"update_tenant_api_v1_tenants__tenant_id__patch","security":[{"HTTPBearer":[]}],"parameters":[{"name":"tenant_id","in":"path","required":true,"schema":{"type":"integer","title":"Tenant Id"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TenantUpdateRequest"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/TenantListItem"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}},"delete":{"tags":["tenants"],"summary":"Delete Tenant","operationId":"delete_tenant_api_v1_tenants__tenant_id__delete","security":[{"HTTPBearer":[]}],"parameters":[{"name":"tenant_id","in":"path","required":true,"schema":{"type":"integer","title":"Tenant Id"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/TenantDeleteRequest"}}}},"responses":{"204":{"description":"Successful Response"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/v1/tenants/{tenant_id}/sync":{"post":{"tags":["tenants"],"summary":"Sync Tenant","operationId":"sync_tenant_api_v1_tenants__tenant_id__sync_post","security":[{"HTTPBearer":[]}],"parameters":[{"name":"tenant_id","in":"path","required":true,"schema":{"type":"integer","title":"Tenant Id"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/TenantSyncReport"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/v1/users":{"get":{"tags":["users"],"summary":"List Users","operationId":"list_users_api_v1_users_get","security":[{"HTTPBearer":[]}],"parameters":[{"name":"tenant_id","in":"query","required":false,"schema":{"anyOf":[{"type":"integer"},{"type":"null"}],"title":"Tenant Id"}},{"name":"keyword","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Keyword"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/UserOut"},"title":"Response List Users Api V1 Users Get"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}},"post":{"tags":["users"],"summary":"Create User","operationId":"create_user_api_v1_users_post","security":[{"HTTPBearer":[]}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/UserCreateRequest"}}}},"responses":{"201":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/UserOut"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/v1/users/{user_id}/provision":{"post":{"tags":["users"],"summary":"Provision User","description":"LDAP JIT 用户开通：仅平台 admin（B4）。","operationId":"provision_user_api_v1_users__user_id__provision_post","security":[{"HTTPBearer":[]}],"parameters":[{"name":"user_id","in":"path","required":true,"schema":{"type":"integer","title":"User Id"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/UserProvisionRequest"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/UserOut"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/v1/users/{user_id}/role":{"patch":{"tags":["users"],"summary":"Set User Role","operationId":"set_user_role_api_v1_users__user_id__role_patch","security":[{"HTTPBearer":[]}],"parameters":[{"name":"user_id","in":"path","required":true,"schema":{"type":"integer","title":"User Id"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/UserRoleRequest"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/UserOut"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/v1/users/{user_id}/reset-password":{"post":{"tags":["users"],"summary":"Reset User Password","operationId":"reset_user_password_api_v1_users__user_id__reset_password_post","security":[{"HTTPBearer":[]}],"parameters":[{"name":"user_id","in":"path","required":true,"schema":{"type":"integer","title":"User Id"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/UserResetPasswordRequest"}}}},"responses":{"204":{"description":"Successful Response"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/v1/users/{user_id}/disable":{"post":{"tags":["users"],"summary":"Disable User","operationId":"disable_user_api_v1_users__user_id__disable_post","security":[{"HTTPBearer":[]}],"parameters":[{"name":"user_id","in":"path","required":true,"schema":{"type":"integer","title":"User Id"}}],"responses":{"204":{"description":"Successful Response"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/v1/users/{user_id}/enable":{"post":{"tags":["users"],"summary":"Enable User","operationId":"enable_user_api_v1_users__user_id__enable_post","security":[{"HTTPBearer":[]}],"parameters":[{"name":"user_id","in":"path","required":true,"schema":{"type":"integer","title":"User Id"}}],"responses":{"204":{"description":"Successful Response"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/v1/users/{user_id}/regenerate-key":{"post":{"tags":["users"],"summary":"Regenerate User Key","operationId":"regenerate_user_key_api_v1_users__user_id__regenerate_key_post","security":[{"HTTPBearer":[]}],"parameters":[{"name":"user_id","in":"path","required":true,"schema":{"type":"integer","title":"User Id"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/KeyRegenerateRequest"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/UserOut"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/v1/users/{user_id}":{"delete":{"tags":["users"],"summary":"Delete User","operationId":"delete_user_api_v1_users__user_id__delete","security":[{"HTTPBearer":[]}],"parameters":[{"name":"user_id","in":"path","required":true,"schema":{"type":"integer","title":"User Id"}}],"responses":{"204":{"description":"Successful Response"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/v1/users/{user_id}/sync":{"post":{"tags":["users"],"summary":"Sync User","operationId":"sync_user_api_v1_users__user_id__sync_post","security":[{"HTTPBearer":[]}],"parameters":[{"name":"user_id","in":"path","required":true,"schema":{"type":"integer","title":"User Id"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/UserSyncReport"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/v1/credentials":{"get":{"tags":["credentials"],"summary":"Get Credentials","operationId":"get_credentials_api_v1_credentials_get","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/CredentialView"}}}}},"security":[{"HTTPBearer":[]}]}},"/api/v1/credentials/reveal":{"post":{"tags":["credentials"],"summary":"Reveal Key","operationId":"reveal_key_api_v1_credentials_reveal_post","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/RevealedKeyOut"}}}}},"security":[{"HTTPBearer":[]}]}},"/api/v1/credentials/copy":{"post":{"tags":["credentials"],"summary":"Copy Key","operationId":"copy_key_api_v1_credentials_copy_post","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/RevealedKeyOut"}}}}},"security":[{"HTTPBearer":[]}]}},"/api/v1/credentials/regenerate":{"post":{"tags":["credentials"],"summary":"Regenerate Own Key","operationId":"regenerate_own_key_api_v1_credentials_regenerate_post","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/KeyRegenerateRequest"}}},"required":true},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/RevealedKeyOut"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}},"security":[{"HTTPBearer":[]}]}}},"components":{"schemas":{"ChangePasswordRequest":{"properties":{"old_password":{"type":"string","title":"Old Password"},"new_password":{"type":"string","maxLength":128,"minLength":8,"title":"New Password"}},"type":"object","required":["old_password","new_password"],"title":"ChangePasswordRequest"},"CredentialView":{"properties":{"endpoint":{"type":"string","title":"Endpoint"},"account_id":{"type":"string","title":"Account Id"},"ov_user_id":{"type":"string","title":"Ov User Id"},"has_key":{"type":"boolean","title":"Has Key"},"key_masked":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Key Masked"},"key_hint":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Key Hint"},"seed_used":{"type":"boolean","title":"Seed Used","default":false},"key_synced_at":{"anyOf":[{"type":"string","format":"date-time"},{"type":"null"}],"title":"Key Synced At"}},"type":"object","required":["endpoint","account_id","ov_user_id","has_key"],"title":"CredentialView"},"HTTPValidationError":{"properties":{"detail":{"items":{"$ref":"#/components/schemas/ValidationError"},"type":"array","title":"Detail"}},"type":"object","title":"HTTPValidationError"},"HealthResponse":{"properties":{"status":{"type":"string","enum":["ok","degraded"],"title":"Status"},"db":{"type":"boolean","title":"Db"},"openviking":{"type":"boolean","title":"Openviking"},"version":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Version"}},"type":"object","required":["status","db","openviking"],"title":"HealthResponse"},"KeyRegenerateRequest":{"properties":{"seed":{"anyOf":[{"type":"string","maxLength":256,"minLength":1},{"type":"null"}],"title":"Seed"}},"type":"object","title":"KeyRegenerateRequest"},"LdapBindRequest":{"properties":{"ldap_username":{"type":"string","maxLength":128,"minLength":1,"title":"Ldap Username"},"ldap_password":{"type":"string","maxLength":128,"minLength":1,"title":"Ldap Password"}},"type":"object","required":["ldap_username","ldap_password"],"title":"LdapBindRequest","description":"LDAP 绑定请求体：凭 bind_token 鉴权，提交 LDAP 账号密码完成验证绑定。"},"LdapConfigOut":{"properties":{"enabled":{"type":"boolean","title":"Enabled"},"server_host":{"type":"string","title":"Server Host"},"server_port":{"type":"integer","title":"Server Port"},"encryption":{"type":"string","title":"Encryption"},"bind_dn":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Bind Dn"},"user_base_dn":{"type":"string","title":"User Base Dn"},"user_filter":{"type":"string","title":"User Filter"},"attr_uid":{"type":"string","title":"Attr Uid"},"attr_mail":{"type":"string","title":"Attr Mail"},"attr_display_name":{"type":"string","title":"Attr Display Name"},"has_bind_password":{"type":"boolean","title":"Has Bind Password"},"updated_at":{"anyOf":[{"type":"string","format":"date-time"},{"type":"null"}],"title":"Updated At"}},"type":"object","required":["enabled","server_host","server_port","encryption","user_base_dn","user_filter","attr_uid","attr_mail","attr_display_name","has_bind_password"],"title":"LdapConfigOut","description":"配置读取响应：永不回显 bind 密码，仅以 has_bind_password 标记是否已保存。"},"LdapConfigUpdate":{"properties":{"enabled":{"type":"boolean","title":"Enabled","default":false},"server_host":{"type":"string","maxLength":256,"minLength":1,"title":"Server Host"},"server_port":{"type":"integer","maximum":65535.0,"minimum":1.0,"title":"Server Port"},"encryption":{"type":"string","enum":["none","starttls","ldaps"],"title":"Encryption","default":"none"},"bind_dn":{"anyOf":[{"type":"string","maxLength":256},{"type":"null"}],"title":"Bind Dn"},"bind_password":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Bind Password"},"user_base_dn":{"type":"string","maxLength":256,"minLength":1,"title":"User Base Dn"},"user_filter":{"type":"string","maxLength":256,"minLength":1,"title":"User Filter"},"attr_uid":{"type":"string","maxLength":64,"minLength":1,"title":"Attr Uid"},"attr_mail":{"type":"string","maxLength":64,"minLength":1,"title":"Attr Mail"},"attr_display_name":{"type":"string","maxLength":64,"minLength":1,"title":"Attr Display Name"}},"type":"object","required":["server_host","server_port","user_base_dn","user_filter","attr_uid","attr_mail","attr_display_name"],"title":"LdapConfigUpdate","description":"配置保存请求体；bind_password 为 None 表示保持已存密文不变。"},"LdapTestResult":{"properties":{"ok":{"type":"boolean","title":"Ok"},"stage":{"type":"string","title":"Stage"},"message":{"type":"string","title":"Message"}},"type":"object","required":["ok","stage","message"],"title":"LdapTestResult","description":"连接测试结果；stage ∈ config / connect / search / ok，message 为中文分类文案。"},"LoginRequest":{"properties":{"username":{"type":"string","title":"Username"},"password":{"type":"string","title":"Password"}},"type":"object","required":["username","password"],"title":"LoginRequest"},"LoginResponse":{"properties":{"access_token":{"type":"string","title":"Access Token","default":""},"token_type":{"type":"string","title":"Token Type","default":"bearer"},"expires_in":{"type":"integer","title":"Expires In","default":0},"role":{"type":"string","title":"Role","default":""},"must_bind":{"type":"boolean","title":"Must Bind","default":false},"bind_token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Bind Token"}},"type":"object","title":"LoginResponse","description":"登录响应：成功发正式 token；LDAP 模式下未绑定用户返回 must_bind + 短时 bind_token。"},"MeOut":{"properties":{"id":{"type":"integer","title":"Id"},"username":{"type":"string","title":"Username"},"role":{"type":"string","title":"Role"},"is_active":{"type":"boolean","title":"Is Active"},"tenant_id":{"anyOf":[{"type":"integer"},{"type":"null"}],"title":"Tenant Id"},"account_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Account Id"},"ov_user_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Ov User Id"},"ov_role":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Ov Role"},"has_ov_key":{"type":"boolean","title":"Has Ov Key","default":false},"key_synced_at":{"anyOf":[{"type":"string","format":"date-time"},{"type":"null"}],"title":"Key Synced At"},"must_change_password":{"type":"boolean","title":"Must Change Password","default":false},"last_login_at":{"anyOf":[{"type":"string","format":"date-time"},{"type":"null"}],"title":"Last Login At"},"is_env_admin":{"type":"boolean","title":"Is Env Admin","default":false},"auth_source":{"type":"string","enum":["local","ldap"],"title":"Auth Source","default":"local"},"ldap_bound":{"type":"boolean","title":"Ldap Bound","default":false},"ldap_enabled":{"type":"boolean","title":"Ldap Enabled","default":false}},"type":"object","required":["id","username","role","is_active"],"title":"MeOut","description":"当前登录用户信息；只暴露 OV key 是否存在的布尔位，不含任何密文。"},"RevealedKeyOut":{"properties":{"endpoint":{"type":"string","title":"Endpoint"},"account_id":{"type":"string","title":"Account Id"},"ov_user_id":{"type":"string","title":"Ov User Id"},"has_key":{"type":"boolean","title":"Has Key"},"key_masked":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Key Masked"},"key_hint":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Key Hint"},"seed_used":{"type":"boolean","title":"Seed Used","default":false},"key_synced_at":{"anyOf":[{"type":"string","format":"date-time"},{"type":"null"}],"title":"Key Synced At"},"key":{"type":"string","title":"Key"}},"type":"object","required":["endpoint","account_id","ov_user_id","has_key","key"],"title":"RevealedKeyOut"},"SyncUserInfo":{"properties":{"ov_user_id":{"type":"string","title":"Ov User Id"},"ov_role":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Ov Role"},"username":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Username"}},"type":"object","required":["ov_user_id"],"title":"SyncUserInfo"},"TenantCreateRequest":{"properties":{"account_id":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$","title":"Account Id"},"admin_user_id":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$","title":"Admin User Id"},"admin_username":{"type":"string","maxLength":64,"minLength":1,"title":"Admin Username"},"admin_password":{"type":"string","maxLength":128,"minLength":8,"title":"Admin Password"},"display_name":{"anyOf":[{"type":"string","maxLength":128,"minLength":1},{"type":"null"}],"title":"Display Name"},"remark":{"anyOf":[{"type":"string","maxLength":500,"minLength":1},{"type":"null"}],"title":"Remark"},"seed":{"anyOf":[{"type":"string","maxLength":256,"minLength":1},{"type":"null"}],"title":"Seed"}},"type":"object","required":["account_id","admin_user_id","admin_username","admin_password"],"title":"TenantCreateRequest"},"TenantCreatedOut":{"properties":{"id":{"type":"integer","title":"Id"},"account_id":{"type":"string","title":"Account Id"},"admin_user_id":{"type":"string","title":"Admin User Id"},"team_admin_id":{"type":"integer","title":"Team Admin Id"},"team_admin_username":{"type":"string","title":"Team Admin Username"},"key_provisioned":{"type":"boolean","title":"Key Provisioned"}},"type":"object","required":["id","account_id","admin_user_id","team_admin_id","team_admin_username","key_provisioned"],"title":"TenantCreatedOut"},"TenantDeleteRequest":{"properties":{"confirm":{"type":"boolean","title":"Confirm","default":false}},"type":"object","title":"TenantDeleteRequest"},"TenantDetailOut":{"properties":{"id":{"type":"integer","title":"Id"},"account_id":{"type":"string","title":"Account Id"},"display_name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Display Name"},"remark":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Remark"},"admin_user_id":{"type":"string","title":"Admin User Id"},"user_count":{"type":"integer","title":"User Count"},"synced_at":{"anyOf":[{"type":"string","format":"date-time"},{"type":"null"}],"title":"Synced At"},"created_at":{"anyOf":[{"type":"string","format":"date-time"},{"type":"null"}],"title":"Created At"},"ov_account":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Ov Account"},"configuration":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Configuration"},"settings":{"anyOf":[{"additionalProperties":true,"type":"object"},{"type":"null"}],"title":"Settings"},"ov_error":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Ov Error"}},"type":"object","required":["id","account_id","admin_user_id","user_count"],"title":"TenantDetailOut"},"TenantListItem":{"properties":{"id":{"type":"integer","title":"Id"},"account_id":{"type":"string","title":"Account Id"},"display_name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Display Name"},"remark":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Remark"},"admin_user_id":{"type":"string","title":"Admin User Id"},"user_count":{"type":"integer","title":"User Count"},"synced_at":{"anyOf":[{"type":"string","format":"date-time"},{"type":"null"}],"title":"Synced At"},"created_at":{"anyOf":[{"type":"string","format":"date-time"},{"type":"null"}],"title":"Created At"}},"type":"object","required":["id","account_id","admin_user_id","user_count"],"title":"TenantListItem"},"TenantSyncReport":{"properties":{"account_id":{"type":"string","title":"Account Id"},"ov_user_count":{"type":"integer","title":"Ov User Count"},"local_user_count":{"type":"integer","title":"Local User Count"},"matched":{"type":"integer","title":"Matched"},"missing_local":{"items":{"$ref":"#/components/schemas/SyncUserInfo"},"type":"array","title":"Missing Local","default":[]},"extra_local":{"items":{"$ref":"#/components/schemas/SyncUserInfo"},"type":"array","title":"Extra Local","default":[]},"synced_at":{"type":"string","format":"date-time","title":"Synced At"}},"type":"object","required":["account_id","ov_user_count","local_user_count","matched","synced_at"],"title":"TenantSyncReport"},"TenantUpdateRequest":{"properties":{"display_name":{"anyOf":[{"type":"string","maxLength":128,"minLength":1},{"type":"null"}],"title":"Display Name"},"remark":{"anyOf":[{"type":"string","maxLength":500,"minLength":1},{"type":"null"}],"title":"Remark"}},"type":"object","title":"TenantUpdateRequest"},"UserCreateRequest":{"properties":{"username":{"type":"string","maxLength":64,"minLength":1,"title":"Username"},"password":{"type":"string","maxLength":128,"minLength":8,"title":"Password"},"tenant_id":{"anyOf":[{"type":"integer"},{"type":"null"}],"title":"Tenant Id"},"ov_user_id":{"anyOf":[{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$"},{"type":"null"}],"title":"Ov User Id"},"role":{"type":"string","enum":["team_admin","user"],"title":"Role","default":"user"},"seed":{"anyOf":[{"type":"string","maxLength":256,"minLength":1},{"type":"null"}],"title":"Seed"}},"type":"object","required":["username","password"],"title":"UserCreateRequest"},"UserOut":{"properties":{"id":{"type":"integer","title":"Id"},"username":{"type":"string","title":"Username"},"role":{"type":"string","title":"Role"},"auth_source":{"type":"string","enum":["local","ldap"],"title":"Auth Source","default":"local"},"is_active":{"type":"boolean","title":"Is Active"},"tenant_id":{"anyOf":[{"type":"integer"},{"type":"null"}],"title":"Tenant Id"},"account_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Account Id"},"ov_user_id":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Ov User Id"},"ov_role":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Ov Role"},"has_key":{"type":"boolean","title":"Has Key","default":false},"key_state":{"type":"string","enum":["current","pending"],"title":"Key State","default":"pending"},"key_synced_at":{"anyOf":[{"type":"string","format":"date-time"},{"type":"null"}],"title":"Key Synced At"},"must_change_password":{"type":"boolean","title":"Must Change Password","default":false},"last_login_at":{"anyOf":[{"type":"string","format":"date-time"},{"type":"null"}],"title":"Last Login At"},"created_at":{"anyOf":[{"type":"string","format":"date-time"},{"type":"null"}],"title":"Created At"},"is_env_admin":{"type":"boolean","title":"Is Env Admin","default":false}},"type":"object","required":["id","username","role","is_active"],"title":"UserOut"},"UserProvisionRequest":{"properties":{"tenant_id":{"type":"integer","title":"Tenant Id"},"role":{"type":"string","enum":["team_admin","user"],"title":"Role","default":"user"},"ov_user_id":{"anyOf":[{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$"},{"type":"null"}],"title":"Ov User Id"},"seed":{"anyOf":[{"type":"string","maxLength":256,"minLength":1},{"type":"null"}],"title":"Seed"}},"type":"object","required":["tenant_id"],"title":"UserProvisionRequest","description":"LDAP JIT 用户开通：为自动建档的用户补全团队归属与 OV 身份。"},"UserResetPasswordRequest":{"properties":{"new_password":{"type":"string","maxLength":128,"minLength":8,"title":"New Password"},"regenerate_key":{"type":"boolean","title":"Regenerate Key","default":false},"seed":{"anyOf":[{"type":"string","maxLength":256,"minLength":1},{"type":"null"}],"title":"Seed"}},"type":"object","required":["new_password"],"title":"UserResetPasswordRequest"},"UserRoleRequest":{"properties":{"role":{"type":"string","enum":["team_admin","user"],"title":"Role"}},"type":"object","required":["role"],"title":"UserRoleRequest"},"UserSyncReport":{"properties":{"account_id":{"type":"string","title":"Account Id"},"ov_user_id":{"type":"string","title":"Ov User Id"},"ov_exists":{"type":"boolean","title":"Ov Exists"},"local_ov_role":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Local Ov Role"},"ov_role":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Ov Role"},"consistent":{"type":"boolean","title":"Consistent"}},"type":"object","required":["account_id","ov_user_id","ov_exists","consistent"],"title":"UserSyncReport"},"ValidationError":{"properties":{"loc":{"items":{"anyOf":[{"type":"string"},{"type":"integer"}]},"type":"array","title":"Location"},"msg":{"type":"string","title":"Message"},"type":{"type":"string","title":"Error Type"},"input":{"title":"Input"},"ctx":{"type":"object","title":"Context"}},"type":"object","required":["loc","msg","type"],"title":"ValidationError"}},"securitySchemes":{"HTTPBearer":{"type":"http","scheme":"bearer"}}}}
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OpenViking Dashboard",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/healthz": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Healthz",
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Me",
+        "operationId": "me_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/change-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Change Password",
+        "operationId": "change_password_api_v1_auth_change_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/ldap/bind": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Ldap Bind",
+        "operationId": "ldap_bind_api_v1_auth_ldap_bind_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LdapBindRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/ldap-config": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get Ldap Config",
+        "operationId": "get_ldap_config_api_v1_auth_ldap_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LdapConfigOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Update Ldap Config",
+        "operationId": "update_ldap_config_api_v1_auth_ldap_config_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LdapConfigUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LdapConfigOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/ldap-config/test": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Test Ldap Config",
+        "operationId": "test_ldap_config_api_v1_auth_ldap_config_test_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LdapConfigUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LdapTestResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tenants": {
+      "get": {
+        "tags": [
+          "tenants"
+        ],
+        "summary": "List Tenants",
+        "operationId": "list_tenants_api_v1_tenants_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "tenants"
+        ],
+        "summary": "Create Tenant",
+        "operationId": "create_tenant_api_v1_tenants_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantCreatedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenants/{tenant_id}": {
+      "get": {
+        "tags": [
+          "tenants"
+        ],
+        "summary": "Get Tenant",
+        "operationId": "get_tenant_api_v1_tenants__tenant_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "tenants"
+        ],
+        "summary": "Update Tenant",
+        "operationId": "update_tenant_api_v1_tenants__tenant_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantListItem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "tenants"
+        ],
+        "summary": "Delete Tenant",
+        "operationId": "delete_tenant_api_v1_tenants__tenant_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantDeleteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenants/{tenant_id}/sync": {
+      "post": {
+        "tags": [
+          "tenants"
+        ],
+        "summary": "Sync Tenant",
+        "operationId": "sync_tenant_api_v1_tenants__tenant_id__sync_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantSyncReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "List Users",
+        "operationId": "list_users_api_v1_users_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Keyword"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserOut"
+                  },
+                  "title": "Response List Users Api V1 Users Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Create User",
+        "operationId": "create_user_api_v1_users_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}/provision": {
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Provision User",
+        "description": "LDAP JIT 用户开通：仅平台 admin（B4）。",
+        "operationId": "provision_user_api_v1_users__user_id__provision_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserProvisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}/role": {
+      "patch": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Set User Role",
+        "operationId": "set_user_role_api_v1_users__user_id__role_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}/reset-password": {
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Reset User Password",
+        "operationId": "reset_user_password_api_v1_users__user_id__reset_password_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserResetPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}/disable": {
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Disable User",
+        "operationId": "disable_user_api_v1_users__user_id__disable_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}/enable": {
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Enable User",
+        "operationId": "enable_user_api_v1_users__user_id__enable_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}/regenerate-key": {
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Regenerate User Key",
+        "operationId": "regenerate_user_key_api_v1_users__user_id__regenerate_key_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyRegenerateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}": {
+      "delete": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Delete User",
+        "operationId": "delete_user_api_v1_users__user_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}/sync": {
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Sync User",
+        "operationId": "sync_user_api_v1_users__user_id__sync_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSyncReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/credentials": {
+      "get": {
+        "tags": [
+          "credentials"
+        ],
+        "summary": "Get Credentials",
+        "operationId": "get_credentials_api_v1_credentials_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/credentials/reveal": {
+      "post": {
+        "tags": [
+          "credentials"
+        ],
+        "summary": "Reveal Key",
+        "operationId": "reveal_key_api_v1_credentials_reveal_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevealedKeyOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/credentials/copy": {
+      "post": {
+        "tags": [
+          "credentials"
+        ],
+        "summary": "Copy Key",
+        "operationId": "copy_key_api_v1_credentials_copy_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevealedKeyOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/credentials/regenerate": {
+      "post": {
+        "tags": [
+          "credentials"
+        ],
+        "summary": "Regenerate Own Key",
+        "operationId": "regenerate_own_key_api_v1_credentials_regenerate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyRegenerateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevealedKeyOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ChangePasswordRequest": {
+        "properties": {
+          "old_password": {
+            "type": "string",
+            "title": "Old Password"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "New Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "old_password",
+          "new_password"
+        ],
+        "title": "ChangePasswordRequest"
+      },
+      "CredentialView": {
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "title": "Endpoint"
+          },
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "ov_user_id": {
+            "type": "string",
+            "title": "Ov User Id"
+          },
+          "has_key": {
+            "type": "boolean",
+            "title": "Has Key"
+          },
+          "key_masked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Masked"
+          },
+          "key_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Hint"
+          },
+          "seed_used": {
+            "type": "boolean",
+            "title": "Seed Used",
+            "default": false
+          },
+          "key_synced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Synced At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "endpoint",
+          "account_id",
+          "ov_user_id",
+          "has_key"
+        ],
+        "title": "CredentialView"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded"
+            ],
+            "title": "Status"
+          },
+          "db": {
+            "type": "boolean",
+            "title": "Db"
+          },
+          "openviking": {
+            "type": "boolean",
+            "title": "Openviking"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "db",
+          "openviking"
+        ],
+        "title": "HealthResponse"
+      },
+      "KeyRegenerateRequest": {
+        "properties": {
+          "seed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          }
+        },
+        "type": "object",
+        "title": "KeyRegenerateRequest"
+      },
+      "LdapBindRequest": {
+        "properties": {
+          "ldap_username": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Ldap Username"
+          },
+          "ldap_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Ldap Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ldap_username",
+          "ldap_password"
+        ],
+        "title": "LdapBindRequest",
+        "description": "LDAP 绑定请求体：凭 bind_token 鉴权，提交 LDAP 账号密码完成验证绑定。"
+      },
+      "LdapConfigOut": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "server_host": {
+            "type": "string",
+            "title": "Server Host"
+          },
+          "server_port": {
+            "type": "integer",
+            "title": "Server Port"
+          },
+          "encryption": {
+            "type": "string",
+            "title": "Encryption"
+          },
+          "bind_dn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bind Dn"
+          },
+          "user_base_dn": {
+            "type": "string",
+            "title": "User Base Dn"
+          },
+          "user_filter": {
+            "type": "string",
+            "title": "User Filter"
+          },
+          "attr_uid": {
+            "type": "string",
+            "title": "Attr Uid"
+          },
+          "attr_mail": {
+            "type": "string",
+            "title": "Attr Mail"
+          },
+          "attr_display_name": {
+            "type": "string",
+            "title": "Attr Display Name"
+          },
+          "has_bind_password": {
+            "type": "boolean",
+            "title": "Has Bind Password"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "server_host",
+          "server_port",
+          "encryption",
+          "user_base_dn",
+          "user_filter",
+          "attr_uid",
+          "attr_mail",
+          "attr_display_name",
+          "has_bind_password"
+        ],
+        "title": "LdapConfigOut",
+        "description": "配置读取响应：永不回显 bind 密码，仅以 has_bind_password 标记是否已保存。"
+      },
+      "LdapConfigUpdate": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "server_host": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Server Host"
+          },
+          "server_port": {
+            "type": "integer",
+            "maximum": 65535.0,
+            "minimum": 1.0,
+            "title": "Server Port"
+          },
+          "encryption": {
+            "type": "string",
+            "enum": [
+              "none",
+              "starttls",
+              "ldaps"
+            ],
+            "title": "Encryption",
+            "default": "none"
+          },
+          "bind_dn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bind Dn"
+          },
+          "bind_password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bind Password"
+          },
+          "user_base_dn": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "User Base Dn"
+          },
+          "user_filter": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "User Filter"
+          },
+          "attr_uid": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Attr Uid"
+          },
+          "attr_mail": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Attr Mail"
+          },
+          "attr_display_name": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Attr Display Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "server_host",
+          "server_port",
+          "user_base_dn",
+          "user_filter",
+          "attr_uid",
+          "attr_mail",
+          "attr_display_name"
+        ],
+        "title": "LdapConfigUpdate",
+        "description": "配置保存请求体；bind_password 为 None 表示保持已存密文不变。"
+      },
+      "LdapTestResult": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "stage": {
+            "type": "string",
+            "title": "Stage"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "stage",
+          "message"
+        ],
+        "title": "LdapTestResult",
+        "description": "连接测试结果；stage ∈ config / connect / search / ok，message 为中文分类文案。"
+      },
+      "LoginRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginRequest"
+      },
+      "LoginResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token",
+            "default": ""
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In",
+            "default": 0
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "default": ""
+          },
+          "must_bind": {
+            "type": "boolean",
+            "title": "Must Bind",
+            "default": false
+          },
+          "bind_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bind Token"
+          }
+        },
+        "type": "object",
+        "title": "LoginResponse",
+        "description": "登录响应：成功发正式 token；LDAP 模式下未绑定用户返回 must_bind + 短时 bind_token。"
+      },
+      "MeOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "ov_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov User Id"
+          },
+          "ov_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov Role"
+          },
+          "has_ov_key": {
+            "type": "boolean",
+            "title": "Has Ov Key",
+            "default": false
+          },
+          "key_synced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Synced At"
+          },
+          "must_change_password": {
+            "type": "boolean",
+            "title": "Must Change Password",
+            "default": false
+          },
+          "last_login_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login At"
+          },
+          "is_env_admin": {
+            "type": "boolean",
+            "title": "Is Env Admin",
+            "default": false
+          },
+          "auth_source": {
+            "type": "string",
+            "enum": [
+              "local",
+              "ldap"
+            ],
+            "title": "Auth Source",
+            "default": "local"
+          },
+          "ldap_bound": {
+            "type": "boolean",
+            "title": "Ldap Bound",
+            "default": false
+          },
+          "ldap_enabled": {
+            "type": "boolean",
+            "title": "Ldap Enabled",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "role",
+          "is_active"
+        ],
+        "title": "MeOut",
+        "description": "当前登录用户信息；只暴露 OV key 是否存在的布尔位，不含任何密文。"
+      },
+      "RevealedKeyOut": {
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "title": "Endpoint"
+          },
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "ov_user_id": {
+            "type": "string",
+            "title": "Ov User Id"
+          },
+          "has_key": {
+            "type": "boolean",
+            "title": "Has Key"
+          },
+          "key_masked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Masked"
+          },
+          "key_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Hint"
+          },
+          "seed_used": {
+            "type": "boolean",
+            "title": "Seed Used",
+            "default": false
+          },
+          "key_synced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Synced At"
+          },
+          "key": {
+            "type": "string",
+            "title": "Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "endpoint",
+          "account_id",
+          "ov_user_id",
+          "has_key",
+          "key"
+        ],
+        "title": "RevealedKeyOut"
+      },
+      "SyncUserInfo": {
+        "properties": {
+          "ov_user_id": {
+            "type": "string",
+            "title": "Ov User Id"
+          },
+          "ov_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov Role"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ov_user_id"
+        ],
+        "title": "SyncUserInfo"
+      },
+      "TenantCreateRequest": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "title": "Account Id"
+          },
+          "admin_user_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "title": "Admin User Id"
+          },
+          "admin_username": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Admin Username"
+          },
+          "admin_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Admin Password"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "remark": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remark"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "admin_user_id",
+          "admin_username",
+          "admin_password"
+        ],
+        "title": "TenantCreateRequest"
+      },
+      "TenantCreatedOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "admin_user_id": {
+            "type": "string",
+            "title": "Admin User Id"
+          },
+          "team_admin_id": {
+            "type": "integer",
+            "title": "Team Admin Id"
+          },
+          "team_admin_username": {
+            "type": "string",
+            "title": "Team Admin Username"
+          },
+          "key_provisioned": {
+            "type": "boolean",
+            "title": "Key Provisioned"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "account_id",
+          "admin_user_id",
+          "team_admin_id",
+          "team_admin_username",
+          "key_provisioned"
+        ],
+        "title": "TenantCreatedOut"
+      },
+      "TenantDeleteRequest": {
+        "properties": {
+          "confirm": {
+            "type": "boolean",
+            "title": "Confirm",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "TenantDeleteRequest"
+      },
+      "TenantDetailOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "remark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remark"
+          },
+          "admin_user_id": {
+            "type": "string",
+            "title": "Admin User Id"
+          },
+          "user_count": {
+            "type": "integer",
+            "title": "User Count"
+          },
+          "synced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synced At"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "ov_account": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov Account"
+          },
+          "configuration": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Configuration"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settings"
+          },
+          "ov_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "account_id",
+          "admin_user_id",
+          "user_count"
+        ],
+        "title": "TenantDetailOut"
+      },
+      "TenantListItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "remark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remark"
+          },
+          "admin_user_id": {
+            "type": "string",
+            "title": "Admin User Id"
+          },
+          "user_count": {
+            "type": "integer",
+            "title": "User Count"
+          },
+          "synced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synced At"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "account_id",
+          "admin_user_id",
+          "user_count"
+        ],
+        "title": "TenantListItem"
+      },
+      "TenantSyncReport": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "ov_user_count": {
+            "type": "integer",
+            "title": "Ov User Count"
+          },
+          "local_user_count": {
+            "type": "integer",
+            "title": "Local User Count"
+          },
+          "matched": {
+            "type": "integer",
+            "title": "Matched"
+          },
+          "missing_local": {
+            "items": {
+              "$ref": "#/components/schemas/SyncUserInfo"
+            },
+            "type": "array",
+            "title": "Missing Local",
+            "default": []
+          },
+          "extra_local": {
+            "items": {
+              "$ref": "#/components/schemas/SyncUserInfo"
+            },
+            "type": "array",
+            "title": "Extra Local",
+            "default": []
+          },
+          "synced_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Synced At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "ov_user_count",
+          "local_user_count",
+          "matched",
+          "synced_at"
+        ],
+        "title": "TenantSyncReport"
+      },
+      "TenantUpdateRequest": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "remark": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remark"
+          }
+        },
+        "type": "object",
+        "title": "TenantUpdateRequest"
+      },
+      "UserCreateRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
+          },
+          "ov_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov User Id"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "team_admin",
+              "user"
+            ],
+            "title": "Role",
+            "default": "user"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "UserCreateRequest"
+      },
+      "UserOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "auth_source": {
+            "type": "string",
+            "enum": [
+              "local",
+              "ldap"
+            ],
+            "title": "Auth Source",
+            "default": "local"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "ov_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov User Id"
+          },
+          "ov_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov Role"
+          },
+          "has_key": {
+            "type": "boolean",
+            "title": "Has Key",
+            "default": false
+          },
+          "key_state": {
+            "type": "string",
+            "enum": [
+              "current",
+              "pending"
+            ],
+            "title": "Key State",
+            "default": "pending"
+          },
+          "key_synced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Synced At"
+          },
+          "must_change_password": {
+            "type": "boolean",
+            "title": "Must Change Password",
+            "default": false
+          },
+          "last_login_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login At"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "is_env_admin": {
+            "type": "boolean",
+            "title": "Is Env Admin",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "role",
+          "is_active"
+        ],
+        "title": "UserOut"
+      },
+      "UserProvisionRequest": {
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "title": "Tenant Id"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "team_admin",
+              "user"
+            ],
+            "title": "Role",
+            "default": "user"
+          },
+          "ov_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov User Id"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenant_id"
+        ],
+        "title": "UserProvisionRequest",
+        "description": "LDAP JIT 用户开通：为自动建档的用户补全团队归属与 OV 身份。"
+      },
+      "UserResetPasswordRequest": {
+        "properties": {
+          "new_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "New Password"
+          },
+          "regenerate_key": {
+            "type": "boolean",
+            "title": "Regenerate Key",
+            "default": false
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "new_password"
+        ],
+        "title": "UserResetPasswordRequest"
+      },
+      "UserRoleRequest": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "team_admin",
+              "user"
+            ],
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "title": "UserRoleRequest"
+      },
+      "UserSyncReport": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "ov_user_id": {
+            "type": "string",
+            "title": "Ov User Id"
+          },
+          "ov_exists": {
+            "type": "boolean",
+            "title": "Ov Exists"
+          },
+          "local_ov_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Ov Role"
+          },
+          "ov_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ov Role"
+          },
+          "consistent": {
+            "type": "boolean",
+            "title": "Consistent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "ov_user_id",
+          "ov_exists",
+          "consistent"
+        ],
+        "title": "UserSyncReport"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
