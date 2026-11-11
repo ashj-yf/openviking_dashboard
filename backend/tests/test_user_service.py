@@ -258,3 +258,25 @@ async def test_provision_service_explicit_ov_user_id_and_seed(db, make_user, mak
     ).one()
     assert rec.seed_used is True
     assert rec.key_kind == "admin"
+
+
+async def test_provision_rejects_duplicate_ov_user_id(db, make_user, make_tenant):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="taken")
+    jit = await _make_jit(db, "zhangsan")
+    ov = _AdminAPI()
+    payload = UserProvisionRequest(tenant_id=t.id, ov_user_id="taken")
+    with pytest.raises(HTTPException) as e:
+        await user_service.provision_jit_user(db, ov, admin, jit, payload, ip=None)
+    assert e.value.status_code == 409
+    assert ov.calls == []  # 唯一冲突在触达 OV 之前拦截
+
+
+async def test_delete_cannot_remove_last_active_platform_admin(db, make_user):
+    last = await make_user("rootadmin", "Admin#12345", "admin")
+    actor = await make_user("boss1", "Passw0rd!", "team_admin", ov_user_id="boss1")
+    with pytest.raises(HTTPException) as e:
+        await user_service.delete_user(db, _AdminAPI(), actor, last, ip=None)
+    assert e.value.status_code == 409
+    assert "最后一个平台管理员不可删除" in e.value.detail
