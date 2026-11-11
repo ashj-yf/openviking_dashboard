@@ -524,6 +524,21 @@ async def test_me_reports_auth_source_and_ldap_flags(
     assert data["ldap_bound"] is False and data["ldap_enabled"] is True
 
 
+async def test_ldap_config_empty_defaults_follow_spec(client, make_user, auth_headers):
+    """规格 AUTH-9/91-data-model/Q21：属性映射默认 uid/mail/displayName
+    （模型列默认与从未保存过的空行响应一致）。"""
+    from app.models import LdapConfig
+
+    assert LdapConfig.__table__.c.attr_display_name.default.arg == "displayName"
+    admin = await make_user(username="specadmin", password="Admin#12345", role="admin")
+    resp = await client.get("/api/v1/auth/ldap-config", headers=auth_headers(admin))
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["attr_uid"] == "uid"
+    assert body["attr_mail"] == "mail"
+    assert body["attr_display_name"] == "displayName"
+
+
 async def test_ldap_config_requires_admin(client, make_user, auth_headers):
     team_admin = await make_user(username="tadmin", password="Admin#12345", role="team_admin")
     pleb = await make_user(username="pleb", password="Admin#12345", role="user")

@@ -169,7 +169,7 @@ def _config_out(row: LdapConfig | None) -> LdapConfigOut:
             user_filter="(uid={username})",
             attr_uid="uid",
             attr_mail="mail",
-            attr_display_name="cn",
+            attr_display_name="displayName",
             has_bind_password=False,
             updated_at=None,
         )

@@ -25,7 +25,7 @@ export function makeLdapConfig(overrides: Partial<LdapConfigOut> = {}): LdapConf
     user_filter: "(uid={username})",
     attr_uid: "uid",
     attr_mail: "mail",
-    attr_display_name: "cn",
+    attr_display_name: "displayName",
     has_bind_password: false,
     updated_at: null,
     ...overrides,

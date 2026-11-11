@@ -24,7 +24,7 @@ class LdapConfig(Base, TimestampMixin):
     user_filter: Mapped[str] = mapped_column(String(256))
     attr_uid: Mapped[str] = mapped_column(String(64), default="uid")
     attr_mail: Mapped[str] = mapped_column(String(64), default="mail")
-    attr_display_name: Mapped[str] = mapped_column(String(64), default="cn")
+    attr_display_name: Mapped[str] = mapped_column(String(64), default="displayName")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
