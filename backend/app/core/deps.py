@@ -123,3 +123,5 @@ def require_roles(*roles: str):
 
 
 AdminUser = Annotated[DashboardUser, Depends(require_roles("admin"))]
+
+ManagerUser = Annotated[DashboardUser, Depends(require_roles("admin", "team_admin"))]
