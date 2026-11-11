@@ -4,6 +4,7 @@ import os
 import pathlib
 import secrets
 import tempfile
+import warnings
 from collections.abc import AsyncGenerator
 
 _TMP_DIR = pathlib.Path(tempfile.mkdtemp(prefix="ovdash-test-"))
@@ -36,6 +37,20 @@ from app.core.security import hash_password
 from app.main import create_app
 from app.models import Base, DashboardUser, Tenant
 from app.services.openviking.client import reset_test_transport, set_test_transport
+from starlette.exceptions import StarletteDeprecationWarning
+
+# 收集期放行：pytest CLI -W error 不受 pyproject ini filterwarnings 约束，
+# 而 starlette 1.10 在收集期 import test_static_spa.py 时就会发出 TestClient
+# 弃用告警，导致收集直接报错。pytest 9 会在收集期的 catch_warnings 上下文里
+# 把 CLI -W 过滤器重新压到过滤链最顶端，模块顶层的 filterwarnings 会被盖住，
+# 因此必须挂在 pytest_collection 钩子里（钩子运行在应用 CLI 过滤器之后）；
+# 测试执行期仍由 ini 的 ignore 规则管控。
+warnings.filterwarnings("ignore", category=StarletteDeprecationWarning)
+
+
+@pytest.hookimpl
+def pytest_collection() -> None:
+    warnings.filterwarnings("ignore", category=StarletteDeprecationWarning)
 
 
 @pytest_asyncio.fixture
