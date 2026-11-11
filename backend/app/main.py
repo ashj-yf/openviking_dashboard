@@ -12,6 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api.v1.auth import router as auth_router
 from app.api.v1.audit import router as audit_router
 from app.api.v1.credentials import router as credentials_router
+from app.api.v1.overview import router as overview_router
 from app.api.v1.tenants import router as tenants_router
 from app.api.v1.users import router as users_router
 from app.core.config import ConfigError, get_settings, validate_settings
@@ -101,6 +102,7 @@ def create_app() -> FastAPI:
     app.include_router(users_router, prefix="/api/v1")
     app.include_router(credentials_router, prefix="/api/v1")
     app.include_router(audit_router, prefix="/api/v1")
+    app.include_router(overview_router, prefix="/api/v1")
 
     # 最后挂静态产物：路由按注册顺序匹配，/healthz、/api/v1/* 已先注册。
     if STATIC_DIR.is_dir():
