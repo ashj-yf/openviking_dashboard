@@ -21,6 +21,8 @@ async def get_health(db: AsyncSession) -> HealthResponse:
     try:
         client = root_client()
         payload = await OVSystemAPI(client).health()
+        # v0.5.4 包络已在 client 边界剥壳：此处 dict 即响应内层（无 version，缺失即
+        # None）；v0.4.x 平铺响应则在顶层携带 version。两种形态统一按 dict 顶层取数。
         if isinstance(payload, dict):
             v = payload.get("version")
             version = v if isinstance(v, str) else None
