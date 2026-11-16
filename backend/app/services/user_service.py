@@ -114,6 +114,12 @@ async def create_user(
             status.HTTP_400_BAD_REQUEST,
             "该用户名为环境配置的超管账号，不可重复创建",
         )
+    # 登录名唯一检查前置到分叉之前：无团队本地账号与团队开通两条路径共用
+    if (await db.scalars(
+        select(DashboardUser).where(DashboardUser.username == payload.username)
+    )).first() is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "登录名已存在")
+
     # 角色与归属决策
     if actor.role == "team_admin":
         if payload.role != "user":
@@ -122,18 +128,19 @@ async def create_user(
             )
         tenant_id = actor.tenant_id
     else:
+        if payload.role == "team_admin" and not payload.tenant_id:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, "未选择团队时角色只能为普通用户"
+            )
         if not payload.tenant_id:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "请选择归属团队")
+            # 无团队：落可登录的未开通本地账号，不触 OV；
+            # 显式传入的 ov_user_id/seed 在此分支被忽略（开通时再定）
+            return await _create_local_unprovisioned(db, actor, payload, ip=ip)
         tenant_id = payload.tenant_id
 
     tenant = await db.get(Tenant, tenant_id)
     if tenant is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "团队不存在")
-
-    if (await db.scalars(
-        select(DashboardUser).where(DashboardUser.username == payload.username)
-    )).first() is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "登录名已存在")
 
     ov_user_id = payload.ov_user_id or payload.username
     if (await db.scalars(
@@ -187,6 +194,37 @@ async def create_user(
     return user
 
 
+async def _create_local_unprovisioned(
+    db: AsyncSession,
+    actor: DashboardUser,
+    payload: UserCreateRequest,
+    *,
+    ip: str | None,
+) -> DashboardUser:
+    """无团队路径：落可登录但未开通 OV 的本地账号（两段式开通的前半段）。
+
+    登录名唯一检查已在 create_user 分叉前完成，无需重复；tenant/ov 字段
+    全空，开通（后续任务）时再定归属与 OV 身份。
+    """
+    user = DashboardUser(
+        username=payload.username,
+        password_hash=hash_password(payload.password),
+        role="user",
+        is_active=True,
+        must_change_password=True,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    await audit_service.record(
+        db, "user.create", actor=actor, target_type="dashboard_user",
+        target_id=str(user.id),
+        detail={"unprovisioned": True, "role": "user"},
+        ip=ip,
+    )
+    return user
+
+
 async def provision_jit_user(
     db: AsyncSession,
     admin_api,
@@ -196,17 +234,18 @@ async def provision_jit_user(
     *,
     ip: str | None,
 ) -> DashboardUser:
-    """LDAP JIT 用户开通：为自动建档用户补全团队归属并注册 OV、签发 key。
+    """未开通用户开通（LDAP JIT / 本地预建）：补全团队归属并注册 OV、签发 key。
 
     仅平台 admin 可操作；复用 create_user 的 OV 先行顺序——注册失败
     OpenVikingError 透传，本地零写入；注册成功即落半成品（停用且无密文，
     保留 OV 归属），签发失败经 regenerate-key 可复活补救；签发成功则
     激活并审计 user.provision。
     """
+    assert_not_env_admin(target)
     if actor.role != "admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "仅平台管理员可执行开通操作")
-    if target.auth_source != "ldap" or target.tenant_id is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "该用户已开通或非 JIT 用户")
+    if target.tenant_id is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "该用户已开通")
     tenant = await db.get(Tenant, payload.tenant_id)
     if tenant is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "团队不存在")
@@ -232,7 +271,9 @@ async def provision_jit_user(
     target.role = payload.role
     target.ov_role = ov_role
     target.ov_user_id = ov_user_id
-    target.must_change_password = False
+    # 仅 LDAP JIT 置 False；local 预建用户保留创建时的 True（首登改密语义）
+    if target.auth_source == "ldap":
+        target.must_change_password = False
     target.is_active = False
     await db.commit()
     await db.refresh(target)
@@ -352,6 +393,11 @@ async def set_role(db, admin_api, actor, target: DashboardUser, new_role: str, *
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "不能对自己执行角色变更")
     # JIT 未开通用户尚无 OV 身份，须先开通再调角色（B4）
     if target.auth_source == "ldap" and target.tenant_id is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "该用户尚未开通，请先执行开通操作"
+        )
+    # 本地预建的未开通用户（无团队）同样须先开通；平台 admin 走下方 400 分支
+    if target.tenant_id is None and target.role != "admin":
         raise HTTPException(
             status.HTTP_409_CONFLICT, "该用户尚未开通，请先执行开通操作"
         )

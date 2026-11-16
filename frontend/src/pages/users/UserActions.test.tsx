@@ -15,8 +15,8 @@ import {
 } from "@mocks/domains/users";
 import type { UserListItem } from "@/api/users";
 
-/** 未开通 JIT 行工厂：LDAP 自动建档、无团队归属与 OV 身份（auth_source=ldap && tenant_id==null）。 */
-function makeJitUser(overrides: Partial<UserListItem> = {}): UserListItem {
+/** 未开通行工厂：无团队归属与 OV 身份（tenant_id==null），LDAP JIT 自动建档或本地两段式创建同构。 */
+function makeUnprovisionedUser(overrides: Partial<UserListItem> = {}): UserListItem {
   return makeUser({
     id: 21,
     username: "ldapguy",
@@ -234,7 +234,7 @@ describe("UserActions", () => {
   });
 
   it("test_provision_action_shown_for_unprovisioned_jit_admin_only", async () => {
-    const jit = makeJitUser();
+    const jit = makeUnprovisionedUser();
 
     // admin：未开通 JIT 行出现开通入口；重置密码/重签密钥/校准不适用
     const adminView = await renderActions(admin(), jit);
@@ -248,14 +248,30 @@ describe("UserActions", () => {
     expect(screen.queryByRole("button", { name: "开通账号" })).toBeNull();
   });
 
+  it("test_team_admin_no_provision_button_for_local_unprovisioned_row", async () => {
+    // 本地两段式创建的未开通行同样泛化出开通入口后，team_admin 视角仍不得出现（锁 Review Focus #5）
+    const orphan = makeUnprovisionedUser({ id: 31, username: "orphan", auth_source: "local" });
+    await renderActions(teamAdmin(), orphan);
+    expect(screen.queryByRole("button", { name: "开通账号" })).toBeNull();
+  });
+
+  it("test_no_provision_button_for_env_admin_row", async () => {
+    // env 超管行 tenant_id 亦为 null，但不在开通语义内（判定须排除 is_env_admin）
+    await renderActions(
+      admin(),
+      makeUser({ id: 2, username: "rootadmin", is_env_admin: true, tenant_id: null, account_id: null }),
+    );
+    expect(screen.queryByRole("button", { name: "开通账号" })).toBeNull();
+  });
+
   it("test_provision_modal_submits_and_closes", async () => {
     const user = userEvent.setup();
     // JIT 行须同时进 mock store：provision 落库语义按 id patch 行，缺行会 404（对齐后端）
-    const jit = makeJitUser();
+    const jit = makeUnprovisionedUser();
     await renderActions(admin(), jit, [makeTenant()], [jit]);
     await user.click(screen.getByRole("button", { name: "开通账号" }));
 
-    expect(await screen.findByText("开通 LDAP 用户")).toBeInTheDocument();
+    expect(await screen.findByText("开通用户")).toBeInTheDocument();
     expect(screen.getByText("ldapguy")).toBeInTheDocument();
 
     const dialog = screen.getByRole("dialog");

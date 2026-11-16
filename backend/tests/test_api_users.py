@@ -55,6 +55,54 @@ async def test_team_admin_cross_tenant_create_forced_scoped(
     assert r.json()["tenant_id"] == t1.id
 
 
+# ---------- 团队可选：无团队落可登录未开通本地账号 ----------
+async def test_create_user_without_tenant_creates_unprovisioned(
+    client, db, make_user, auth_headers, ov_calls
+):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    r = await client.post(
+        "/api/v1/users",
+        json={"username": "dave", "password": "Dave#12345"},
+        headers=auth_headers(admin),
+    )
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["tenant_id"] is None
+    assert body["ov_user_id"] is None
+    assert body["role"] == "user"
+    assert body["is_active"] is True
+    assert body["key_state"] == "pending"
+    u = (await db.scalars(
+        select(DashboardUser).where(DashboardUser.username == "dave")
+    )).one()
+    assert u.password_hash  # 可登录：本机口令已落
+    assert u.ov_user_key_encrypted is None
+    assert u.must_change_password is True
+    logs = (await db.scalars(
+        select(AuditLog).where(AuditLog.action == "user.create").order_by(AuditLog.id)
+    )).all()
+    assert json.loads(logs[-1].detail_json)["unprovisioned"] is True
+    assert ov_calls["calls"] == []  # 全程不触 OV
+
+
+async def test_create_user_team_admin_without_tenant_400(
+    client, db, make_user, auth_headers, ov_calls
+):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    r = await client.post(
+        "/api/v1/users",
+        json={"username": "dave", "password": "Dave#12345", "role": "team_admin"},
+        headers=auth_headers(admin),
+    )
+    assert r.status_code == 400, r.text
+    assert r.json()["detail"] == "未选择团队时角色只能为普通用户"
+    rows = (await db.scalars(
+        select(DashboardUser).where(DashboardUser.username == "dave")
+    )).all()
+    assert rows == []  # 本地零写入
+    assert ov_calls["calls"] == []
+
+
 async def test_list_scoping_and_shape(
     client, make_user, make_tenant, auth_headers
 ):
@@ -651,7 +699,7 @@ async def test_provision_already_provisioned_409(
 ):
     chief = await make_user("chief", "Admin#12345", "admin")
     t = await make_tenant("acme")
-    # 本机用户不是 JIT 用户
+    # 有团队的 local 用户已开通（开通已泛化，无团队 local 才可开通）
     local_u = await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="alice")
     r1 = await client.post(
         f"/api/v1/users/{local_u.id}/provision",
@@ -659,7 +707,7 @@ async def test_provision_already_provisioned_409(
         headers=auth_headers(chief),
     )
     assert r1.status_code == 409
-    assert r1.json()["detail"] == "该用户已开通或非 JIT 用户"
+    assert r1.json()["detail"] == "该用户已开通"
     # 已开通的 LDAP 用户（tenant 非空）同样拒绝
     prov = await make_user(
         "wangwu", "Passw0rd!", "user", tenant=t, ov_user_id="wangwu",
@@ -672,7 +720,7 @@ async def test_provision_already_provisioned_409(
         headers=auth_headers(chief),
     )
     assert r2.status_code == 409
-    assert r2.json()["detail"] == "该用户已开通或非 JIT 用户"
+    assert r2.json()["detail"] == "该用户已开通"
     assert ov_calls["calls"] == []
 
 
@@ -816,6 +864,154 @@ async def test_set_role_blocked_for_unprovisioned_jit(
     assert ov_calls["calls"] == []
     await db.refresh(jit)
     assert jit.role == "user"
+
+
+# ---------- 团队可选：本地未开通用户的开通与守卫 ----------
+async def test_provision_local_unprovisioned_user_success(
+    client, db, make_user, make_tenant, auth_headers, ov_calls
+):
+    chief = await make_user("chief", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    r0 = await client.post(
+        "/api/v1/users",
+        json={"username": "dave", "password": "Dave#12345"},
+        headers=auth_headers(chief),
+    )
+    assert r0.status_code == 201, r0.text
+    dave_id = r0.json()["id"]
+    ov_calls["responses"].extend([
+        (200, {"user_id": "dave"}),
+        (200, {"key": "prov-key-12345678"}),
+    ])
+    r = await client.post(
+        f"/api/v1/users/{dave_id}/provision",
+        json={"tenant_id": t.id, "role": "user"},
+        headers=auth_headers(chief),
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["tenant_id"] == t.id
+    assert body["ov_user_id"] == "dave"  # 未显式指定时取登录名
+    assert body["has_key"] is True
+    assert body["is_active"] is True
+    assert body["key_state"] == "current"
+    assert body["auth_source"] == "local"
+    # local 用户保留创建时的首登改密语义（LDAP JIT 才置 False）
+    assert body["must_change_password"] is True
+    # OV 顺序：先注册后签发（沿用 JIT 开通 mock 形状）
+    assert ov_calls["calls"][0]["path"] == "/api/v1/admin/accounts/acme/users"
+    assert ov_calls["calls"][0]["body"] == {"user_id": "dave", "role": "user"}
+    assert ov_calls["calls"][1]["path"] == "/api/v1/admin/accounts/acme/users/dave/key"
+    u = (await db.scalars(
+        select(DashboardUser).where(DashboardUser.id == dave_id)
+    )).one()
+    assert u.tenant_id == t.id
+    assert u.ov_user_id == "dave"
+    assert u.ov_role == "user"
+    assert u.is_active is True
+    assert u.must_change_password is True
+    assert u.ov_user_key_encrypted is not None
+    log = (await db.scalars(
+        select(AuditLog).where(AuditLog.action == "user.provision")
+    )).one()
+    assert log.actor_user_id == chief.id
+    assert json.loads(log.detail_json) == {
+        "tenant": "acme", "ov_user_id": "dave",
+        "role": "user", "seed_used": False,
+    }
+
+
+async def test_provision_local_already_provisioned_409(
+    client, db, make_user, make_tenant, auth_headers, ov_calls
+):
+    chief = await make_user("chief", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    # 有团队的 local 用户已开通，重复开通拒绝
+    local_u = await make_user("alice", "Passw0rd!", "user", tenant=t, ov_user_id="alice")
+    r = await client.post(
+        f"/api/v1/users/{local_u.id}/provision",
+        json={"tenant_id": t.id},
+        headers=auth_headers(chief),
+    )
+    assert r.status_code == 409, r.text
+    assert r.json()["detail"] == "该用户已开通"
+    assert ov_calls["calls"] == []  # 守卫在触达 OV 之前
+
+
+async def test_provision_env_admin_403(
+    client, db, make_user, make_tenant, auth_headers, ov_calls
+):
+    """env 超管受 AUTH-3 UI 保护：开通不得成为漏网的目标变更入口。"""
+    chief = await make_user("chief", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    env_admin = await _make_env_admin(make_user)
+    r = await client.post(
+        f"/api/v1/users/{env_admin.id}/provision",
+        json={"tenant_id": t.id},
+        headers=auth_headers(chief),
+    )
+    assert r.status_code == 403, r.text
+    assert r.json()["detail"] == "超管账号受环境配置保护，无法在界面修改"
+    assert ov_calls["calls"] == []
+    await db.refresh(env_admin)
+    assert env_admin.tenant_id is None
+    assert env_admin.ov_user_id is None
+    assert env_admin.role == "admin"
+
+
+async def test_set_role_local_unprovisioned_409(
+    client, db, make_user, make_tenant, auth_headers, ov_calls
+):
+    chief = await make_user("chief", "Admin#12345", "admin")
+    await make_tenant("acme")
+    r0 = await client.post(
+        "/api/v1/users",
+        json={"username": "dave", "password": "Dave#12345"},
+        headers=auth_headers(chief),
+    )
+    assert r0.status_code == 201, r0.text
+    r = await client.patch(
+        f"/api/v1/users/{r0.json()['id']}/role",
+        json={"role": "team_admin"},
+        headers=auth_headers(chief),
+    )
+    assert r.status_code == 409, r.text
+    assert r.json()["detail"] == "该用户尚未开通，请先执行开通操作"
+    assert ov_calls["calls"] == []
+    u = (await db.scalars(
+        select(DashboardUser).where(DashboardUser.username == "dave")
+    )).one()
+    assert u.role == "user"  # 本地角色不变
+
+
+async def test_regenerate_own_key_unprovisioned_409(
+    client, db, make_user, auth_headers, ov_calls
+):
+    """锁定 rotate_user_key 既有守卫：未开通用户无 OV 身份，自助重签 409。
+
+    未开通用户首登改密前会被初始密码门禁 403 拦截（deps.assert_password_current），
+    这里翻掉 must_change_password 模拟已过首登改密的未开通用户，直达目标守卫。
+    """
+    chief = await make_user("chief", "Admin#12345", "admin")
+    r0 = await client.post(
+        "/api/v1/users",
+        json={"username": "dave", "password": "Dave#12345"},
+        headers=auth_headers(chief),
+    )
+    assert r0.status_code == 201, r0.text
+    dave = (await db.scalars(
+        select(DashboardUser).where(DashboardUser.username == "dave")
+    )).one()
+    dave.must_change_password = False
+    await db.commit()
+    r = await client.post(
+        "/api/v1/credentials/regenerate", json={}, headers=auth_headers(dave)
+    )
+    assert r.status_code == 409, r.text
+    assert r.json()["detail"] == "该账号没有 OpenViking 身份"
+    assert ov_calls["calls"] == []
+    await db.refresh(dave)
+    assert dave.ov_user_key_encrypted is None  # 本地密文未变
 
 
 async def test_delete_jit_user_local_only(

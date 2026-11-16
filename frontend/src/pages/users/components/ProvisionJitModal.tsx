@@ -20,7 +20,7 @@ interface ProvisionJitFormValues {
 
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
-/** LDAP JIT 用户开通弹窗：为自动建档用户（auth_source=ldap 且未归属团队）补全团队与 OV 身份。 */
+/** 未开通用户开通弹窗：为未开通用户（LDAP JIT 建档 / 本地预建）补全团队与 OV 身份。 */
 export function ProvisionJitModal({ open, user, onClose }: Props) {
   const [form] = Form.useForm<ProvisionJitFormValues>();
   const { message } = App.useApp();
@@ -87,7 +87,7 @@ export function ProvisionJitModal({ open, user, onClose }: Props) {
 
   return (
     <Modal
-      title="开通 LDAP 用户"
+      title="开通用户"
       open={open}
       okText="开通"
       cancelText="取消"

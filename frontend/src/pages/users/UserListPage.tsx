@@ -70,8 +70,8 @@ export function UserListPage() {
       title: "状态",
       dataIndex: "is_active",
       render: (active: boolean, record) =>
-        // JIT 未开通行（LDAP 自动建档、无归属）：以专用 Tag 标识，待 admin 开通
-        record.auth_source === "ldap" && record.tenant_id == null ? (
+        // 未开通行（无团队归属且非 env 超管，LDAP 自动建档或两段式创建）：专用 Tag 标识，待 admin 开通
+        record.tenant_id == null && !record.is_env_admin ? (
           <Tag color="orange">未开通</Tag>
         ) : active ? (
           <Tag color="blue">启用</Tag>
