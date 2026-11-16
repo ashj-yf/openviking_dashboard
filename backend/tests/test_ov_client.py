@@ -96,6 +96,16 @@ async def test_flat_payload_without_result_passes_through(mock_transport):
 
 
 @pytest.mark.asyncio
+async def test_result_without_status_passes_through(mock_transport):
+    # AND 判定第三腿：有 result 无 status 的形态不剥壳，原样返回
+    mock_transport["handler"] = lambda req: httpx.Response(200, json={"result": {"a": 1}})
+
+    result = await OVClient("k").request("GET", "/x")
+
+    assert result == {"result": {"a": 1}}
+
+
+@pytest.mark.asyncio
 async def test_error_envelope_still_raises(mock_transport):
     mock_transport["handler"] = lambda req: httpx.Response(
         400, json={"status": "error", "error": {"code": "INVALID_ARGUMENT"}}
