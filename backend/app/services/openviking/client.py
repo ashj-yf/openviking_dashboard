@@ -38,6 +38,8 @@ def _unwrap_envelope(payload: Any) -> Any:
     真机成功响应为 ``{"status": "ok", "result": <内层>, "error": null, ...}``，
     仅当 payload 同时含 ``result`` 与 ``status`` 两键时返回内层 ``result``；
     平铺 dict、list、裸值等其余形态原样返回，避免误伤旧契约的裸 JSON。
+    仅判键存在不判 status 值；2xx + status:"error" 的形态未在真机观测到，
+    若未来出现需升级为显式检查并抛错。
     """
     if isinstance(payload, dict) and "result" in payload and "status" in payload:
         return payload["result"]

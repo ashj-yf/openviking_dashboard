@@ -2,6 +2,8 @@
 
 root key 访问数据面会 403；admin key 按所在 account 自动隔离。
 具体返回结构以服务端 OpenAPI/实际响应为准，这里先做薄封装、原样透传。
+资源浏览走 ``fs_ls("viking://resources")``；``/api/v1/resources`` 仅存在 POST
+（写入）形态（v0.5.4 真机），写入端点不在数据面封装范围。
 """
 from typing import Any
 
@@ -14,9 +16,6 @@ class OVDataAPI:
 
     async def list_skills(self, params: dict | None = None) -> Any:
         return await self.c.request("GET", "/api/v1/skills", params=params)
-
-    async def list_resources(self, params: dict | None = None) -> Any:
-        return await self.c.request("GET", "/api/v1/resources", params=params)
 
     async def list_sessions(self, params: dict | None = None) -> Any:
         return await self.c.request("GET", "/api/v1/sessions", params=params)
