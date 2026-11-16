@@ -938,6 +938,27 @@ async def test_provision_local_already_provisioned_409(
     assert ov_calls["calls"] == []  # 守卫在触达 OV 之前
 
 
+async def test_provision_env_admin_403(
+    client, db, make_user, make_tenant, auth_headers, ov_calls
+):
+    """env 超管受 AUTH-3 UI 保护：开通不得成为漏网的目标变更入口。"""
+    chief = await make_user("chief", "Admin#12345", "admin")
+    t = await make_tenant("acme")
+    env_admin = await _make_env_admin(make_user)
+    r = await client.post(
+        f"/api/v1/users/{env_admin.id}/provision",
+        json={"tenant_id": t.id},
+        headers=auth_headers(chief),
+    )
+    assert r.status_code == 403, r.text
+    assert r.json()["detail"] == "超管账号受环境配置保护，无法在界面修改"
+    assert ov_calls["calls"] == []
+    await db.refresh(env_admin)
+    assert env_admin.tenant_id is None
+    assert env_admin.ov_user_id is None
+    assert env_admin.role == "admin"
+
+
 async def test_set_role_local_unprovisioned_409(
     client, db, make_user, make_tenant, auth_headers, ov_calls
 ):

@@ -241,6 +241,7 @@ async def provision_jit_user(
     保留 OV 归属），签发失败经 regenerate-key 可复活补救；签发成功则
     激活并审计 user.provision。
     """
+    assert_not_env_admin(target)
     if actor.role != "admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "仅平台管理员可执行开通操作")
     if target.tenant_id is not None:
