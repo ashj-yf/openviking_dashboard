@@ -19,8 +19,9 @@ export function UserActions({ user }: { user: UserListItem }) {
   const isSelf = me?.id === user.id;
   const isPlatformAdmin = me?.role === "admin";
   const targetIsTeamAdmin = user.role === "team_admin";
-  // JIT 未开通行：LDAP 自动建档但尚无团队归属，仅平台 admin 可为其开通（后端 403/409 兜底）。
-  const isUnprovisionedJit = user.auth_source === "ldap" && user.tenant_id == null;
+  // 未开通行：LDAP JIT 自动建档或本地两段式创建的无团队归属账号（env 超管除外），
+  // 仅平台 admin 可为其开通（后端 403/409 兜底）。
+  const isUnprovisioned = user.tenant_id == null && !user.is_env_admin;
   const canManage =
     isPlatformAdmin ||
     (me?.role === "team_admin" &&
@@ -58,7 +59,7 @@ export function UserActions({ user }: { user: UserListItem }) {
 
   return (
     <Space size={4} wrap data-testid="user-actions" data-ready="true">
-      {isPlatformAdmin && isUnprovisionedJit && (
+      {isPlatformAdmin && isUnprovisioned && (
         <Button size="small" type="primary" onClick={() => setProvisionOpen(true)}>
           开通账号
         </Button>
@@ -100,7 +101,7 @@ export function UserActions({ user }: { user: UserListItem }) {
         ))}
       {user.ov_user_id && <UserSyncModal user={user} />}
       {!isSelf && <DeleteUserModal user={user} />}
-      {isPlatformAdmin && isUnprovisionedJit && (
+      {isPlatformAdmin && isUnprovisioned && (
         <ProvisionJitModal
           open={provisionOpen}
           user={user}

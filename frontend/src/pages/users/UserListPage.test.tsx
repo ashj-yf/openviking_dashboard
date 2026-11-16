@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
 import { renderWithProviders } from "@/test/utils";
 import { AppRoutes } from "@/router/AppRoutes";
+import { server } from "@mocks/server";
 import { makeMe, resetAuthMock } from "@mocks/domains/auth";
 import { resetHealthMock } from "@mocks/domains/health";
 import { resetTenantsMock } from "@mocks/domains/tenants";
@@ -145,12 +147,23 @@ describe("UserListPage", () => {
     await screen.findAllByText("alice");
     await user.click(screen.getByRole("button", { name: "开通用户" }));
 
+    // 未选团队：角色锁普通用户，OV 专属字段（含 seed）隐藏；先选定团队解锁。
+    // 弹窗内 Select 的同步选中配方同「开通成功」用例：mouseDown 后不插入 await 直接点击。
+    await screen.findByLabelText("登录用户名");
+    const dialog = screen.getByRole("dialog");
+    await waitFor(() =>
+      expect(dialog.querySelector(".ant-select-arrow .anticon-loading")).toBeNull(),
+    );
+    fireEvent.mouseDown(within(dialog).getByRole("combobox"));
+    fireEvent.click(screen.getByText("acme", { selector: ".ant-select-item-option-content" }));
+
     expect(await screen.findByRole("radio", { name: "普通用户" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "团队管理员" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Seed（可选）")).toBeNull();
     await user.click(screen.getByText("高级选项"));
     expect(await screen.findByLabelText("Seed（可选）")).toBeInTheDocument();
-  });
+    // 选团队+折叠展开的交互链在 jsdom 下较慢，放宽预算（同「开通成功」用例）。
+  }, 30000);
 
   it("OV 用户 ID 默认跟随登录名", async () => {
     const user = userEvent.setup();
@@ -158,9 +171,19 @@ describe("UserListPage", () => {
     await screen.findAllByText("alice");
     await user.click(screen.getByRole("button", { name: "开通用户" }));
 
-    await user.type(await screen.findByLabelText("登录用户名"), "carol");
+    // OV 字段在未选团队时隐藏：先选定团队（同步选中配方同「开通成功」用例）
+    await screen.findByLabelText("登录用户名");
+    const dialog = screen.getByRole("dialog");
+    await waitFor(() =>
+      expect(dialog.querySelector(".ant-select-arrow .anticon-loading")).toBeNull(),
+    );
+    fireEvent.mouseDown(within(dialog).getByRole("combobox"));
+    fireEvent.click(screen.getByText("acme", { selector: ".ant-select-item-option-content" }));
+
+    await user.type(screen.getByLabelText("登录用户名"), "carol");
     expect((screen.getByLabelText("OV 用户 ID") as HTMLInputElement).value).toBe("carol");
-  });
+    // 选团队的交互前缀在 jsdom 下较慢，放宽预算（同「开通成功」用例）。
+  }, 30000);
 
   it("手动修改过 OV 用户 ID 后不再被登录名覆盖", async () => {
     const user = userEvent.setup();
@@ -168,13 +191,23 @@ describe("UserListPage", () => {
     await screen.findAllByText("alice");
     await user.click(screen.getByRole("button", { name: "开通用户" }));
 
-    await user.type(await screen.findByLabelText("登录用户名"), "carol");
+    // OV 字段在未选团队时隐藏：先选定团队（同步选中配方同「开通成功」用例）
+    await screen.findByLabelText("登录用户名");
+    const dialog = screen.getByRole("dialog");
+    await waitFor(() =>
+      expect(dialog.querySelector(".ant-select-arrow .anticon-loading")).toBeNull(),
+    );
+    fireEvent.mouseDown(within(dialog).getByRole("combobox"));
+    fireEvent.click(screen.getByText("acme", { selector: ".ant-select-item-option-content" }));
+
+    await user.type(screen.getByLabelText("登录用户名"), "carol");
     const ovInput = screen.getByLabelText("OV 用户 ID");
     await user.clear(ovInput);
     await user.type(ovInput, "carol-dev");
     await user.type(screen.getByLabelText("登录用户名"), "x");
     expect((ovInput as HTMLInputElement).value).toBe("carol-dev");
-  });
+    // 选团队的交互前缀在 jsdom 下较慢，放宽预算（同「开通成功」用例）。
+  }, 30000);
 
   it("开通成功：发送完整 body、提示线下交付流程、列表出现新用户", async () => {
     const user = userEvent.setup();
@@ -204,6 +237,62 @@ describe("UserListPage", () => {
     });
     await waitFor(() => expect(screen.queryByLabelText("登录用户名")).toBeNull());
     expect(await screen.findAllByText("dave")).not.toHaveLength(0);
+    // antd Form 在 jsdom 下逐键校验定时器会被 user-event 的 act 包装逐键等待，交互用例较慢，
+    // 放宽预算，断言不变（同 T4）。
+  }, 30000);
+
+  it("不选团队提交时角色强制普通用户且不发送 tenant_id", async () => {
+    const user = userEvent.setup();
+    renderAs("admin");
+    await screen.findAllByText("alice");
+    await user.click(screen.getByRole("button", { name: "开通用户" }));
+
+    await user.type(await screen.findByLabelText("登录用户名"), "orphan");
+    await user.type(screen.getByLabelText("初始密码"), "Orphan#2026");
+    // 无团队：角色组整体禁用且强制选中普通用户，OV 专属字段隐藏
+    expect(screen.getByRole("radio", { name: "普通用户" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "团队管理员" })).toBeDisabled();
+    expect(screen.queryByLabelText("OV 用户 ID")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "开通" }));
+
+    await waitFor(() => expect(getUserRequests("POST")).toHaveLength(1));
+    const body = getUserRequests("POST")[0].body as Record<string, unknown>;
+    expect(body.role).toBe("user");
+    expect("tenant_id" in body).toBe(false);
+    // antd Form 在 jsdom 下逐键校验定时器会被 user-event 的 act 包装逐键等待，交互用例较慢，
+    // 放宽预算，断言不变（同 T4）。
+  }, 30000);
+
+  it("无团队创建成功文案含未开通提示", async () => {
+    // 两段式创建：POST /users 不带 tenant_id → 201 未开通账号（tenant_id=null，覆盖默认 mock）
+    server.use(
+      http.post("*/api/v1/users", async ({ request }) => {
+        const body = (await request.json()) as { username: string };
+        return HttpResponse.json(
+          makeUser({
+            id: 78,
+            username: body.username,
+            tenant_id: null,
+            account_id: null,
+            ov_user_id: null,
+            ov_role: null,
+            has_key: false,
+            key_state: "pending",
+          }),
+          { status: 201 },
+        );
+      }),
+    );
+    const user = userEvent.setup();
+    renderAs("admin");
+    await screen.findAllByText("alice");
+    await user.click(screen.getByRole("button", { name: "开通用户" }));
+
+    await user.type(await screen.findByLabelText("登录用户名"), "orphan");
+    await user.type(screen.getByLabelText("初始密码"), "Orphan#2026");
+    await user.click(screen.getByRole("button", { name: "开通" }));
+
+    expect(await screen.findByText(/orphan 已创建（未开通）/)).toBeInTheDocument();
     // antd Form 在 jsdom 下逐键校验定时器会被 user-event 的 act 包装逐键等待，交互用例较慢，
     // 放宽预算，断言不变（同 T4）。
   }, 30000);
@@ -338,5 +427,45 @@ describe("UserListPage", () => {
     expect(await screen.findAllByText("alice")).not.toHaveLength(0);
     expect(screen.getByText("启用")).toBeInTheDocument();
     expect(screen.queryByText("未开通")).toBeNull();
+  });
+
+  it("本地未开通行显示未开通标签与开通按钮", async () => {
+    // 两段式创建的未开通行：auth_source=local 且无团队归属，与 LDAP JIT 同构
+    resetUsersMock([
+      makeUser({
+        username: "orphan",
+        auth_source: "local",
+        tenant_id: null,
+        account_id: null,
+        ov_user_id: null,
+        ov_role: null,
+        has_key: false,
+        key_state: "pending",
+        is_active: true,
+      }),
+    ]);
+    renderAs("admin");
+
+    expect(await screen.findByText("orphan")).toBeInTheDocument();
+    expect(screen.getByText("未开通")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "开通账号" })).toBeInTheDocument();
+  });
+
+  it("env 超管行虽无团队但不标未开通且无开通按钮", async () => {
+    resetUsersMock([
+      makeUser({
+        username: "rootadmin",
+        is_env_admin: true,
+        tenant_id: null,
+        account_id: null,
+        is_active: true,
+      }),
+    ]);
+    renderAs("admin");
+
+    expect(await screen.findByText("rootadmin")).toBeInTheDocument();
+    expect(screen.getByText("启用")).toBeInTheDocument();
+    expect(screen.queryByText("未开通")).toBeNull();
+    expect(screen.queryByRole("button", { name: "开通账号" })).toBeNull();
   });
 });

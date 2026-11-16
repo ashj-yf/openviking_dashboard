@@ -24,6 +24,9 @@ export function ProvisionUserModal({ open, onClose }: Props) {
 
   const isTeamAdmin = me?.role === "team_admin";
   const username = Form.useWatch("username", form) as string | undefined;
+  // admin 未选团队：先创建为未开通账号，OV 身份与角色放宽到开通时再定
+  const tenantWatch = Form.useWatch("tenant_id", form) as number | null | undefined;
+  const noTenant = !isTeamAdmin && tenantWatch == null;
 
   const tenantsQuery = useQuery({
     queryKey: qk.tenants(""),
@@ -48,11 +51,18 @@ export function ProvisionUserModal({ open, onClose }: Props) {
     if (!ovTouched && username) form.setFieldValue("ov_user_id", username);
   }, [username, ovTouched, form]);
 
+  useEffect(() => {
+    if (noTenant) form.setFieldValue("role", "user");
+  }, [noTenant, form]);
+
   const mutation = useMutation({
     mutationFn: (values: UserCreateBody) => userApi.create(values),
     onSuccess: (created) => {
+      // 两段式创建：无团队 → 未开通账号，团队与密钥待列表开通时补全
       message.success(
-        `用户 ${created.username} 开通成功。请通过安全渠道交付登录地址、账号与初始密码；首次登录将被要求修改密码，user key 在「我的凭证」页面获取。`,
+        created.tenant_id == null
+          ? `用户 ${created.username} 已创建（未开通）。请稍后在列表执行开通补全团队与密钥`
+          : `用户 ${created.username} 开通成功。请通过安全渠道交付登录地址、账号与初始密码；首次登录将被要求修改密码，user key 在「我的凭证」页面获取。`,
         6,
       );
       queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -97,7 +107,8 @@ export function ProvisionUserModal({ open, onClose }: Props) {
     } as UserCreateBody;
     if (me?.role === "admin") {
       body.tenant_id = raw.tenant_id ?? undefined;
-      body.role = raw.role === "team_admin" ? "team_admin" : "user";
+      // 未选团队即未开通创建：角色强制普通用户（后端同规则 400 兜底）
+      body.role = raw.tenant_id == null ? "user" : raw.role === "team_admin" ? "team_admin" : "user";
     }
     mutation.mutate(body);
   }
@@ -135,21 +146,27 @@ export function ProvisionUserModal({ open, onClose }: Props) {
             <span>{me?.account_id}</span>
           </Form.Item>
         ) : (
-          <Form.Item label="归属团队" name="tenant_id" rules={[{ required: true, message: "请选择归属团队" }]}>
+          <Form.Item
+            label="归属团队"
+            name="tenant_id"
+            extra="不选则先创建为未开通账号，后续在列表中开通"
+          >
             <Select options={tenantOptions} placeholder="选择团队" loading={tenantsQuery.isLoading} />
           </Form.Item>
         )}
-        <Form.Item
-          label="OV 用户 ID"
-          name="ov_user_id"
-          rules={[{ pattern: ID_PATTERN, message: "仅允许字母、数字、下划线、连字符，长度 1-64" }]}
-          extra="留空则与登录名一致；创建后不可修改"
-        >
-          <Input maxLength={64} autoComplete="off" onChange={() => setOvTouched(true)} />
-        </Form.Item>
+        {!noTenant && (
+          <Form.Item
+            label="OV 用户 ID"
+            name="ov_user_id"
+            rules={[{ pattern: ID_PATTERN, message: "仅允许字母、数字、下划线、连字符，长度 1-64" }]}
+            extra="留空则与登录名一致；创建后不可修改"
+          >
+            <Input maxLength={64} autoComplete="off" onChange={() => setOvTouched(true)} />
+          </Form.Item>
+        )}
         {!isTeamAdmin && (
           <Form.Item label="Dashboard 角色" name="role">
-            <Radio.Group>
+            <Radio.Group disabled={noTenant}>
               <Radio value="user">普通用户</Radio>
               <Radio value="team_admin">团队管理员</Radio>
             </Radio.Group>
@@ -161,7 +178,7 @@ export function ProvisionUserModal({ open, onClose }: Props) {
             {
               key: "advanced",
               label: "高级选项",
-              children: (
+              children: noTenant ? null : (
                 <Form.Item label="Seed（可选）" name="seed" extra="同 seed 可确定性重建密钥">
                   <Input maxLength={256} autoComplete="off" />
                 </Form.Item>
