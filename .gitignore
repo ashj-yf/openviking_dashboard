@@ -303,3 +303,10 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+
+# Claude Code local-only settings, backups, and auto-mode artifacts
+# (may carry machine-specific permissions and quoted settings values)
+.claude/settings.local.json
+.claude/settings.local.json.bak.*
+.claude/.automode-history/
+.claude/.auto_mode_approved.json
