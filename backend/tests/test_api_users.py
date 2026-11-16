@@ -55,6 +55,54 @@ async def test_team_admin_cross_tenant_create_forced_scoped(
     assert r.json()["tenant_id"] == t1.id
 
 
+# ---------- 团队可选：无团队落可登录未开通本地账号 ----------
+async def test_create_user_without_tenant_creates_unprovisioned(
+    client, db, make_user, auth_headers, ov_calls
+):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    r = await client.post(
+        "/api/v1/users",
+        json={"username": "dave", "password": "Dave#12345"},
+        headers=auth_headers(admin),
+    )
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["tenant_id"] is None
+    assert body["ov_user_id"] is None
+    assert body["role"] == "user"
+    assert body["is_active"] is True
+    assert body["key_state"] == "pending"
+    u = (await db.scalars(
+        select(DashboardUser).where(DashboardUser.username == "dave")
+    )).one()
+    assert u.password_hash  # 可登录：本机口令已落
+    assert u.ov_user_key_encrypted is None
+    assert u.must_change_password is True
+    logs = (await db.scalars(
+        select(AuditLog).where(AuditLog.action == "user.create").order_by(AuditLog.id)
+    )).all()
+    assert json.loads(logs[-1].detail_json)["unprovisioned"] is True
+    assert ov_calls["calls"] == []  # 全程不触 OV
+
+
+async def test_create_user_team_admin_without_tenant_400(
+    client, db, make_user, auth_headers, ov_calls
+):
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    r = await client.post(
+        "/api/v1/users",
+        json={"username": "dave", "password": "Dave#12345", "role": "team_admin"},
+        headers=auth_headers(admin),
+    )
+    assert r.status_code == 400, r.text
+    assert r.json()["detail"] == "未选择团队时角色只能为普通用户"
+    rows = (await db.scalars(
+        select(DashboardUser).where(DashboardUser.username == "dave")
+    )).all()
+    assert rows == []  # 本地零写入
+    assert ov_calls["calls"] == []
+
+
 async def test_list_scoping_and_shape(
     client, make_user, make_tenant, auth_headers
 ):

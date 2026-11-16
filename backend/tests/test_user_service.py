@@ -125,13 +125,19 @@ async def test_duplicate_username_and_ov_user_conflict(db, make_user, make_tenan
     assert ov.calls == []
 
 
-async def test_admin_must_supply_tenant(db, make_user):
+async def test_admin_without_tenant_creates_unprovisioned_local(db, make_user):
     admin = await make_user("rootadmin", "Admin#12345", "admin")
     ov = _AdminAPI()
     payload = UserCreateRequest(username="lonely", password="Lonely#1234")
-    with pytest.raises(HTTPException) as e:
-        await user_service.create_user(db, ov, admin, payload, ip=None)
-    assert e.value.status_code == 400
+    user = await user_service.create_user(db, ov, admin, payload, ip=None)
+    assert user.tenant_id is None
+    assert user.ov_user_id is None
+    assert user.role == "user"
+    assert user.is_active is True
+    assert user.must_change_password is True
+    assert user.password_hash  # 可登录
+    assert user.ov_user_key_encrypted is None
+    assert ov.calls == []  # 不触 OV
 
 
 async def test_key_issue_failure_leaves_inactive_half_product(db, make_user, make_tenant):

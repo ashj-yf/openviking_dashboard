@@ -114,6 +114,12 @@ async def create_user(
             status.HTTP_400_BAD_REQUEST,
             "该用户名为环境配置的超管账号，不可重复创建",
         )
+    # 登录名唯一检查前置到分叉之前：无团队本地账号与团队开通两条路径共用
+    if (await db.scalars(
+        select(DashboardUser).where(DashboardUser.username == payload.username)
+    )).first() is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "登录名已存在")
+
     # 角色与归属决策
     if actor.role == "team_admin":
         if payload.role != "user":
@@ -122,18 +128,19 @@ async def create_user(
             )
         tenant_id = actor.tenant_id
     else:
+        if payload.role == "team_admin" and not payload.tenant_id:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, "未选择团队时角色只能为普通用户"
+            )
         if not payload.tenant_id:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "请选择归属团队")
+            # 无团队：落可登录的未开通本地账号，不触 OV；
+            # 显式传入的 ov_user_id/seed 在此分支被忽略（开通时再定）
+            return await _create_local_unprovisioned(db, actor, payload, ip=ip)
         tenant_id = payload.tenant_id
 
     tenant = await db.get(Tenant, tenant_id)
     if tenant is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "团队不存在")
-
-    if (await db.scalars(
-        select(DashboardUser).where(DashboardUser.username == payload.username)
-    )).first() is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "登录名已存在")
 
     ov_user_id = payload.ov_user_id or payload.username
     if (await db.scalars(
@@ -182,6 +189,37 @@ async def create_user(
         target_id=str(user.id),
         detail={"tenant": tenant.ov_account_id, "ov_user_id": ov_user_id,
                 "role": payload.role, "seed_used": payload.seed is not None},
+        ip=ip,
+    )
+    return user
+
+
+async def _create_local_unprovisioned(
+    db: AsyncSession,
+    actor: DashboardUser,
+    payload: UserCreateRequest,
+    *,
+    ip: str | None,
+) -> DashboardUser:
+    """无团队路径：落可登录但未开通 OV 的本地账号（两段式开通的前半段）。
+
+    登录名唯一检查已在 create_user 分叉前完成，无需重复；tenant/ov 字段
+    全空，开通（后续任务）时再定归属与 OV 身份。
+    """
+    user = DashboardUser(
+        username=payload.username,
+        password_hash=hash_password(payload.password),
+        role="user",
+        is_active=True,
+        must_change_password=True,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    await audit_service.record(
+        db, "user.create", actor=actor, target_type="dashboard_user",
+        target_id=str(user.id),
+        detail={"unprovisioned": True, "role": "user"},
         ip=ip,
     )
     return user
