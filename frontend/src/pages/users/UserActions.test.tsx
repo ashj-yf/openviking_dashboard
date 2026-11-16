@@ -271,7 +271,7 @@ describe("UserActions", () => {
     await renderActions(admin(), jit, [makeTenant()], [jit]);
     await user.click(screen.getByRole("button", { name: "开通账号" }));
 
-    expect(await screen.findByText("开通 LDAP 用户")).toBeInTheDocument();
+    expect(await screen.findByText("开通用户")).toBeInTheDocument();
     expect(screen.getByText("ldapguy")).toBeInTheDocument();
 
     const dialog = screen.getByRole("dialog");
