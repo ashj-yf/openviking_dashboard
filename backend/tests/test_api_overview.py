@@ -139,6 +139,36 @@ async def test_observer_partial_failure(client, make_user, auth_headers, ov_call
         assert components[name]["error"] is None
 
 
+async def test_observer_envelope_unwrapped(client, make_user, auth_headers, ov_calls):
+    """v0.5.4 统一包络在 client 边界剥壳：observer data 只透传内层 result。
+
+    mock OV observer 返回完整包络 ``{"status": "ok", "result": <内层>, "error": null}``，
+    断言 ``components[c]["data"]`` 恒等于内层 result，且不含 ``status``/``error`` 外壳键
+    （若剥壳失效，data 会是整只包络，首条断言即失守）。
+    """
+    admin = await make_user("rootadmin", "Admin#12345", "admin")
+    inner = {
+        c: {"component": c, "metrics": {"depth": i}}
+        for i, c in enumerate(OBSERVER_COMPONENTS)
+    }
+    ov_calls["responses"].extend(
+        (200, {"status": "ok", "result": inner[c], "error": None})
+        for c in OBSERVER_COMPONENTS
+    )
+
+    r = await client.get("/api/v1/overview/observer", headers=auth_headers(admin))
+    assert r.status_code == 200
+    components = r.json()["components"]
+    assert set(components) == set(OBSERVER_COMPONENTS)
+    for c in OBSERVER_COMPONENTS:
+        assert components[c]["data"] == inner[c]
+        assert components[c]["error"] is None
+        # 剥壳证据：data 内无包络外壳键
+        assert "status" not in components[c]["data"]
+        assert "result" not in components[c]["data"]
+        assert "error" not in components[c]["data"]
+
+
 async def test_observer_single_and_unknown(client, make_user, auth_headers, ov_calls):
     """单组件 200 透传（data/error 包装）；未知组件 404 且不触达 OV。"""
     admin = await make_user("rootadmin", "Admin#12345", "admin")
