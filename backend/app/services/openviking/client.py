@@ -32,6 +32,18 @@ def reset_test_transport() -> None:
     _test_transport = None
 
 
+def _unwrap_envelope(payload: Any) -> Any:
+    """剥壳 v0.5.4 统一响应包络。
+
+    真机成功响应为 ``{"status": "ok", "result": <内层>, "error": null, ...}``，
+    仅当 payload 同时含 ``result`` 与 ``status`` 两键时返回内层 ``result``；
+    平铺 dict、list、裸值等其余形态原样返回，避免误伤旧契约的裸 JSON。
+    """
+    if isinstance(payload, dict) and "result" in payload and "status" in payload:
+        return payload["result"]
+    return payload
+
+
 class OpenVikingError(RuntimeError):
     def __init__(self, status_code: int, message: str, path: str = ""):
         self.status_code = status_code
@@ -115,7 +127,7 @@ class OVClient:
             raise OpenVikingError(resp.status_code, resp.text[:500], path)
         if not resp.content:
             return None
-        return resp.json()
+        return _unwrap_envelope(resp.json())
 
     async def aclose(self) -> None:
         if self._client is not None:

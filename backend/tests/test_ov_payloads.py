@@ -55,3 +55,25 @@ def test_extract_accounts_list_and_account():
     assert extract_accounts_list({}) == []
     assert extract_account({"account_id": "a", "settings": {}}) == {"account_id": "a", "settings": {}}
     assert extract_account(None) is None
+
+
+def test_extract_admin_key_accepts_user_key_in_create_result():
+    # v0.5.4 真机 create_account 内层：初始 admin key 即 user_key 字段。
+    assert extract_admin_key(
+        {"account_id": "a", "admin_user_id": "m", "user_key": "k-144"}
+    ) == "k-144"
+
+
+def test_extract_users_list_from_bare_inner_array():
+    users = extract_users_list([{"user_id": "u1", "role": "admin"}])
+    assert len(users) == 1
+    assert extract_remote_user_id(users[0]) == "u1"
+
+
+def test_extract_users_list_from_summary_dict():
+    users = extract_users_list({"users": [{"user_id": "u2"}], "total": 1, "key_count": 1})
+    assert [extract_remote_user_id(u) for u in users] == ["u2"]
+
+
+def test_extract_user_key_from_inner_result():
+    assert extract_user_key({"user_id": "u", "user_key": "k"}) == "k"

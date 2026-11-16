@@ -17,6 +17,16 @@ async def test_health_non_string_version_reported_none(db, ov_mock):
     assert result.version is None
 
 
+async def test_health_v054_envelope_inner_no_version(db, ov_mock):
+    # v0.5.4 真机包络经 client 剥壳后 health() 返回内层，内层无 version 字段
+    ov_mock["handler"] = lambda req: httpx.Response(
+        200, json={"status": "ok", "result": {"healthy": True, "account_id": "default"}}
+    )
+    result = await health_service.get_health(db)
+    assert result.db is True and result.openviking is True
+    assert result.version is None
+
+
 async def test_health_ov_down_still_db_ok(db, ov_mock):
     ov_mock["handler"] = lambda req: httpx.Response(500, text="boom")
     result = await health_service.get_health(db)

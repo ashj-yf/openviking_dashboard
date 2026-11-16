@@ -69,3 +69,39 @@ async def test_connect_error_wrapped_as_503(mock_transport):
     # 消息不含 URL 参数与密钥
     assert "secret-key-value" not in exc.value.message
     assert "http" not in exc.value.message
+
+
+@pytest.mark.asyncio
+async def test_envelope_success_returns_inner_result(mock_transport):
+    mock_transport["handler"] = lambda req: httpx.Response(
+        200,
+        json={"status": "ok", "result": {"user_id": "u1"}, "error": None},
+    )
+
+    result = await OVClient("k").request("GET", "/api/v1/users/me")
+
+    assert result == {"user_id": "u1"}
+
+
+@pytest.mark.asyncio
+async def test_flat_payload_without_result_passes_through(mock_transport):
+    for payload in ({"status": "ok"}, {"ok": True}):
+        mock_transport["handler"] = lambda req, payload=payload: httpx.Response(
+            200, json=payload
+        )
+
+        result = await OVClient("k").request("GET", "/api/v1/debug/health")
+
+        assert result == payload
+
+
+@pytest.mark.asyncio
+async def test_error_envelope_still_raises(mock_transport):
+    mock_transport["handler"] = lambda req: httpx.Response(
+        400, json={"status": "error", "error": {"code": "INVALID_ARGUMENT"}}
+    )
+
+    with pytest.raises(OpenVikingError) as exc:
+        await OVClient("k").request("POST", "/api/v1/data/query")
+
+    assert exc.value.status_code == 400
