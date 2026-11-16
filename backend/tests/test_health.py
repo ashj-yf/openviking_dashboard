@@ -27,6 +27,50 @@ async def test_health_v054_envelope_inner_no_version(db, ov_mock):
     assert result.version is None
 
 
+def _v054_handler(health_status: int = 200):
+    """按 path 分流：debug/health 返回 v0.5.4 包络，根路径 /health 返回免鉴权平铺响应。"""
+
+    def _handler(req: httpx.Request) -> httpx.Response:
+        if req.url.path == "/health":
+            if health_status != 200:
+                return httpx.Response(health_status, text="version probe down")
+            return httpx.Response(
+                200,
+                json={
+                    "status": "ok",
+                    "healthy": True,
+                    "version": "v0.5.4",
+                    "auth_mode": "api_key",
+                },
+            )
+        return httpx.Response(
+            200,
+            json={
+                "status": "ok",
+                "result": {"healthy": True, "account_id": "default"},
+                "error": None,
+            },
+        )
+
+    return _handler
+
+
+async def test_health_version_from_root_health_endpoint(db, ov_mock):
+    # v0.5.4：debug/health 内层无 version，版本号取根路径 /health 免鉴权平铺响应顶层
+    ov_mock["handler"] = _v054_handler()
+    result = await health_service.get_health(db)
+    assert result.db is True and result.openviking is True
+    assert result.version == "v0.5.4"
+
+
+async def test_health_version_probe_failure_degrades_only_version(db, ov_mock):
+    # /health 探测失败仅降级 version=None，ov_ok 仍以 debug/health 成功为准
+    ov_mock["handler"] = _v054_handler(health_status=500)
+    result = await health_service.get_health(db)
+    assert result.db is True and result.openviking is True
+    assert result.version is None
+
+
 async def test_health_ov_down_still_db_ok(db, ov_mock):
     ov_mock["handler"] = lambda req: httpx.Response(500, text="boom")
     result = await health_service.get_health(db)
