@@ -234,7 +234,7 @@ async def provision_jit_user(
     *,
     ip: str | None,
 ) -> DashboardUser:
-    """LDAP JIT 用户开通：为自动建档用户补全团队归属并注册 OV、签发 key。
+    """未开通用户开通（LDAP JIT / 本地预建）：补全团队归属并注册 OV、签发 key。
 
     仅平台 admin 可操作；复用 create_user 的 OV 先行顺序——注册失败
     OpenVikingError 透传，本地零写入；注册成功即落半成品（停用且无密文，
@@ -243,8 +243,8 @@ async def provision_jit_user(
     """
     if actor.role != "admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "仅平台管理员可执行开通操作")
-    if target.auth_source != "ldap" or target.tenant_id is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "该用户已开通或非 JIT 用户")
+    if target.tenant_id is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "该用户已开通")
     tenant = await db.get(Tenant, payload.tenant_id)
     if tenant is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "团队不存在")
@@ -270,7 +270,9 @@ async def provision_jit_user(
     target.role = payload.role
     target.ov_role = ov_role
     target.ov_user_id = ov_user_id
-    target.must_change_password = False
+    # 仅 LDAP JIT 置 False；local 预建用户保留创建时的 True（首登改密语义）
+    if target.auth_source == "ldap":
+        target.must_change_password = False
     target.is_active = False
     await db.commit()
     await db.refresh(target)
@@ -390,6 +392,11 @@ async def set_role(db, admin_api, actor, target: DashboardUser, new_role: str, *
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "不能对自己执行角色变更")
     # JIT 未开通用户尚无 OV 身份，须先开通再调角色（B4）
     if target.auth_source == "ldap" and target.tenant_id is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "该用户尚未开通，请先执行开通操作"
+        )
+    # 本地预建的未开通用户（无团队）同样须先开通；平台 admin 走下方 400 分支
+    if target.tenant_id is None and target.role != "admin":
         raise HTTPException(
             status.HTTP_409_CONFLICT, "该用户尚未开通，请先执行开通操作"
         )
