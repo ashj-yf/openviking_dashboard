@@ -20,18 +20,24 @@ async def get_health(db: AsyncSession) -> HealthResponse:
     client: OVClient | None = None
     try:
         client = root_client()
-        payload = await OVSystemAPI(client).health()
-        # v0.5.4 包络已在 client 边界剥壳：此处 dict 即响应内层（无 version，缺失即
-        # None）；v0.4.x 平铺响应则在顶层携带 version。两种形态统一按 dict 顶层取数。
-        if isinstance(payload, dict):
-            v = payload.get("version")
-            version = v if isinstance(v, str) else None
+        await OVSystemAPI(client).health()
         ov_ok = True
     except Exception:
         # root key 未配置、HTTP 4xx/5xx、传输错误等任何异常都只做降级，不外抛。
         ov_ok = False
-    finally:
-        if client is not None:
+
+    if client is not None:
+        # 版本探测：根路径 /health 免鉴权，v0.5.4 真机为平铺响应
+        # {"status","healthy","version","auth_mode"}（有 status 无 result，client 剥壳原样透传）。
+        # 任何失败（异常/缺字段/非 str）仅降级 version=None，不影响 ov_ok 探活语义。
+        try:
+            payload = await client.request("GET", "/health")
+            if isinstance(payload, dict):
+                v = payload.get("version")
+                version = v if isinstance(v, str) else None
+        except Exception:
+            version = None
+        finally:
             await client.aclose()
 
     return HealthResponse(

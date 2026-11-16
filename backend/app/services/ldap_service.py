@@ -116,7 +116,6 @@ def _open_and_bind(cfg: LdapConfig, dn: str | None, password: str | None):
     LDAPException 系，异常分类由调用方接缝函数处理。
     """
     from ldap3 import Connection
-    from ldap3.core.exceptions import LDAPException
 
     conn = Connection(
         _build_server(cfg),
