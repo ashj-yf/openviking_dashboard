@@ -27,8 +27,8 @@ def extract_user_key(payload: Any) -> str | None:
 
 
 def extract_admin_key(payload: Any) -> str | None:
-    """创建账户响应中的初始管理员 key；支持平铺与 admin/admin_user 嵌套。"""
-    flat = _as_str(_first_key(payload, "admin_key", "admin_api_key"))
+    """创建账户响应中的初始管理员 key；v0.5.4 内层即 user_key，另支持历史平铺与 admin/admin_user 嵌套。"""
+    flat = _as_str(_first_key(payload, "user_key", "admin_key", "admin_api_key"))
     if flat:
         return flat
     nested = _first_key(payload, "admin", "admin_user", "initial_admin")
